@@ -11,14 +11,14 @@ from constants import ACTION_SPACE_TYPE
 import gym
 import gym.utils
 from gym import wrappers
-import gym_doom
-from gym_doom.wrappers import *
+#import gym_doom
+#from gym_doom.wrappers import *
 
 class GameState(object):
     def __init__(self, rand_seed, ROM, display=True, no_op_max=7, task_index=-1):
         self.task_index = task_index
         self.ROM = ROM
-        action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
+#        action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
         self.env = gym.make(self.ROM)
         self.env.close()
         #self.env = action_space_wrapper(self.env)

@@ -31,8 +31,8 @@ import argparse
 import gym
 import gym.utils
 from gym import wrappers
-import gym_doom
-from gym_doom.wrappers import *
+#import gym_doom
+#from gym_doom.wrappers import *
 
 import multiprocessing
 
