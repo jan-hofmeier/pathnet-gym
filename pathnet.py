@@ -29,7 +29,7 @@ def geopath_initializer(L,M):
       geopath[i,j]=tf.Variable(1.0);
   return geopath;
 
-def mutation(geopath,L,M,N):
+def mutationDown(geopath,L,M,N):
   for i in range(L):
     for j in range(M):
       if(geopath[i,j]==1):
@@ -46,6 +46,17 @@ def mutation(geopath,L,M,N):
             elif((j+rand_value2)>=M):
               geopath[i,M-1]=1
   return geopath;
+
+def mutation(geopath,L,M,N):
+  for i in range(L):
+    for j in range(M):
+      if(geopath[i,j]==1):
+        rand_value=int(np.random.rand()*L*N)
+        if(rand_value<=1):
+          geopath[i,j]=0
+          rand_value2=np.random.randint(0,M)
+          geopath[i,rand_value2]=1
+  return geopath
 
 def select_two_candi(M):
   selected=np.zeros(2,dtype=int);
