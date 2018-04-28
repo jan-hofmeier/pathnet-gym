@@ -7,15 +7,26 @@ import time
 
 
 wrapper = ToDiscrete('constant-7')
-env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
-env.close()
-env.reset()
+#env.close()
+#env.reset()
 
 for a in range(8):
-    print 'ACTION:', a
+    env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
+    env.reset()
+    print('ACTION:', a)
     for i in range(350):
         _, reward, _, _ = env.step(a)
-        print i, reward
+        print(i, reward)
         env.render()
-    env.reset()
-env.close()
+    print("------------------------------")
+    env.close()
+    '''reset=False
+    while(not reset):
+         try:
+             env.reset()
+             reset=True
+         except:
+              pass
+      '''
+#env.close()
+#env.env.close()

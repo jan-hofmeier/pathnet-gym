@@ -1,0 +1,23 @@
+*** Fatal Error ***
+Address not mapped to object (signal 11)
+Address: (nil)
+
+System: Linux indiga-laptop 4.13.0-36-generic #40-Ubuntu SMP Fri Feb 16 20:07:48 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+
+ViZDoom version 1.0.2 (ZDOOM 2.8.1) ()
+Compiler version: 6.4.0 20171010
+
+Command line: /home/indiga/.local/lib/python3.6/site-packages/doom_py/bin/vizdoom -iwad /home/indiga/.local/lib/python3.6/site-packages/doom_py/scenarios/freedoom2.wad -config vizdoom.ini -skill 4 -width 640 -height 480 +vid_aspect 0 +screenblocks 10 +r_drawplayersprites 1 +crosshair 0 +cl_maxdecals 0 +r_particles 0 +fullscreen 0 +vizdoom_controlled 1 +vizdoom_instance_id PxxP1TClEw +vizdoom_no_console 1 +use_mouse 0 +vizdoom_screen_format 7 +vizdoom_window_hidden 1 +vizdoom_no_x_server 1 +wipetype 0 -noidle -nojoy -nosound +vizdoom_no_sound 1 +cl_capfps 1 +vid_vsync 0 -file /home/indiga/.local/lib/python3.6/site-packages/doom_py/scenarios/basic.wad
+
+Wad 0: vizdoom.pk3
+Wad 1: freedoom2.wad
+Wad 2: basic.wad
+
+Current map: map01
+
+viewx = 0
+viewy = 0
+viewz = 0
+viewangle = 0
+
+Executing: gdb --quiet --batch --command=gdb-respfile-c8JL2g

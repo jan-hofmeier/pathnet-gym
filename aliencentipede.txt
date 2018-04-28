@@ -1,0 +1,93 @@
+Initializing worker #1
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #2
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #4
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #8
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #0
+Setting training task to:  Alien-v0, with action size: 18
+### Performance : 980.0 STEPS in 25 sec. 39 STEPS/sec. 0.14M STEPS/hour
+### Performance : 8651.0 STEPS in 152 sec. 57 STEPS/sec. 0.20M STEPS/hour
+### Performance : 16944.0 STEPS in 283 sec. 60 STEPS/sec. 0.22M STEPS/hour
+### Performance : 25488.0 STEPS in 415 sec. 61 STEPS/sec. 0.22M STEPS/hour
+### Performance : 33313.0 STEPS in 539 sec. 62 STEPS/sec. 0.22M STEPS/hour
+### Performance : 41790.0 STEPS in 672 sec. 62 STEPS/sec. 0.22M STEPS/hour
+### Performance : 49904.0 STEPS in 801 sec. 62 STEPS/sec. 0.22M STEPS/hour
+### Performance : 58149.0 STEPS in 929 sec. 63 STEPS/sec. 0.23M STEPS/hour
+### Performance : 66389.0 STEPS in 1057 sec. 63 STEPS/sec. 0.23M STEPS/hour
+### Performance : 74672.0 STEPS in 1189 sec. 63 STEPS/sec. 0.23M STEPS/hour
+### Performance : 83069.0 STEPS in 1318 sec. 63 STEPS/sec. 0.23M STEPS/hour
+### Performance : 90802.0 STEPS in 1445 sec. 63 STEPS/sec. 0.23M STEPS/hour
+### Performance : 99001.0 STEPS in 1574 sec. 63 STEPS/sec. 0.23M STEPS/hour
+Setting training task to:  Centipede-v0, with action size: 18
+### Performance : 107114.0 STEPS in 116 sec. 926 STEPS/sec. 3.34M STEPS/hour
+### Performance : 115262.0 STEPS in 243 sec. 474 STEPS/sec. 1.71M STEPS/hour
+### Performance : 123636.0 STEPS in 371 sec. 334 STEPS/sec. 1.20M STEPS/hour
+### Performance : 131902.0 STEPS in 497 sec. 265 STEPS/sec. 0.96M STEPS/hour
+### Performance : 139675.0 STEPS in 618 sec. 226 STEPS/sec. 0.81M STEPS/hour
+### Performance : 147532.0 STEPS in 740 sec. 199 STEPS/sec. 0.72M STEPS/hour
+### Performance : 156051.0 STEPS in 872 sec. 179 STEPS/sec. 0.64M STEPS/hour
+### Performance : 163800.0 STEPS in 994 sec. 165 STEPS/sec. 0.59M STEPS/hour
+### Performance : 171833.0 STEPS in 1119 sec. 154 STEPS/sec. 0.55M STEPS/hour
+### Performance : 180178.0 STEPS in 1245 sec. 145 STEPS/sec. 0.52M STEPS/hour
+### Performance : 188311.0 STEPS in 1369 sec. 138 STEPS/sec. 0.50M STEPS/hour
+### Performance : 196724.0 STEPS in 1495 sec. 132 STEPS/sec. 0.47M STEPS/hour
+Initializing worker #7
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #5
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #6
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #3
+Setting training task to:  Alien-v0, with action size: 18
+Setting training task to:  Centipede-v0, with action size: 18
+Initializing worker #9
+Geopath Setting Done
+=============Task 1============
+11291.0 Step Score: 300.0
+21651.0 Step Score: 240.0
+29141.0 Step Score: 260.0
+36074.0 Step Score: 190.0
+43409.0 Step Score: 320.0
+49543.0 Step Score: 180.0
+53114.0 Step Score: 200.0
+56872.0 Step Score: 300.0
+63246.0 Step Score: 280.0
+65786.0 Step Score: 360.0
+71665.0 Step Score: 320.0
+71877.0 Step Score: 200.0
+79745.0 Step Score: 320.0
+86896.0 Step Score: 370.0
+91645.0 Step Score: 350.0
+97104.0 Step Score: 400.0
+97264.0 Step Score: 380.0
+Geopath Setting Done
+=============Task 2============
+108154.0 Step Score: 2156.0
+113763.0 Step Score: 5618.0
+118702.0 Step Score: 3877.0
+125239.0 Step Score: 6091.0
+134429.0 Step Score: 6152.0
+142628.0 Step Score: 4085.0
+142753.0 Step Score: 5419.0
+147000.0 Step Score: 5413.0
+147252.0 Step Score: 3587.0
+155991.0 Step Score: 3747.0
+159728.0 Step Score: 4528.0
+159908.0 Step Score: 1764.0
+163780.0 Step Score: 6451.0
+170508.0 Step Score: 2081.0
+175614.0 Step Score: 1288.0
+184716.0 Step Score: 4975.0
+190995.0 Step Score: 5377.0
+196904.0 Step Score: 3679.0
+197155.0 Step Score: 1663.0

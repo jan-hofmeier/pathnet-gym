@@ -21,7 +21,7 @@ class GameState(object):
         action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
         self.env = gym.make(self.ROM)
         self.env.close()
-        self.env = action_space_wrapper(self.env)
+        #self.env = action_space_wrapper(self.env)
         self.display = display
         if (self.display):
             self.env = wrappers.Monitor(self.env, GYM_MONITOR_DIR + '-' + self.ROM)
@@ -34,7 +34,7 @@ class GameState(object):
     def _process_frame(self, action, reshape):
         observation, reward, terminal, info = self.env.step(action)
         self._screen = cv2.cvtColor(observation, cv2.COLOR_BGR2GRAY)
-        reshaped_screen = np.reshape(self._screen, (480, 640))
+        reshaped_screen = np.reshape(self._screen, (observation.shape[0], observation.shape[1]))
 
         resized_screen = cv2.resize(reshaped_screen, (120, 160))
         x_t = resized_screen[:,10:]
@@ -60,10 +60,12 @@ class GameState(object):
         self.s_t = np.stack((x_t, x_t, x_t, x_t), axis = 2)
 
     def process(self, action):
+        #print('process')
         # if (action > self._no_op_max - 1):
         #     # print("Action '{}' is out of bounds. Remapped action '{}' -> '{}'".format(action, action, self._no_op_max-1))
         #     action = self._no_op_max - 1
-
+        #if self.display:
+        self.env.render()
         r, t, x_t1 = self._process_frame(action, True)
         self.reward = r
         self.terminal = t

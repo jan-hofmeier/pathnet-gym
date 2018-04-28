@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ps_num=2
-worker_num=9
+worker_num=8
 B=3
 for i in `eval echo {0..$ps_num}`
 do

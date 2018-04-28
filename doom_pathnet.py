@@ -23,9 +23,18 @@ from constants import RMSP_EPSILON
 from constants import RMSP_ALPHA
 from constants import GRAD_NORM_CLIP
 from constants import NUM_GPUS
+import visualize
 
 import pathnet
 import argparse
+
+import gym
+import gym.utils
+from gym import wrappers
+import gym_doom
+from gym_doom.wrappers import *
+
+import multiprocessing
 
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # mute tensorflow
 
@@ -94,6 +103,13 @@ def train():
 
         tf.set_random_seed(1);
         #There are no global network
+
+        #lock = multiprocessing.Lock()
+
+        #wrapper = ToDiscrete('constant-7')
+        #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
+        #env.close()
+
         training_thread = A3CTrainingThread(0,"",0,initial_learning_rate,learning_rate_input,grad_applier,MAX_TIME_STEP,device=device,FLAGS=FLAGS,task_index=FLAGS.task_index)
 
         # prepare session
@@ -156,13 +172,12 @@ def train():
 
         with sv.managed_session(server.target) as sess:
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):
-                for task in range(2):
+                 for task in range(2):
                     training_thread.set_training_stage(task)
 
-                    while True:
-                        if(sess.run([flag])[0]==(task+1)):
-                            break;
-                            time.sleep(2);
+                    while sess.run([flag])[0] != (task+1):
+                        time.sleep(2)
+
                     # Set fixed_path
                     fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
                     for i in range(FLAGS.L):
@@ -181,10 +196,14 @@ def train():
                                                                                                     summary_op, "",score_ph,score_ops,"",FLAGS,score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
                         sess.run(global_step_ops,{global_step_ph:sess.run([global_step])[0]+diff_global_t});
             else:
-                fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
-                vars_backup=np.zeros(len(vars_),dtype=object);
-                vars_backup=sess.run(vars_);
-                winner_idx=0;
+                fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
+                vars_backup=np.zeros(len(vars_),dtype=object)
+                vars_backup=sess.run(vars_)
+                winner_idx=0
+
+                vis = visualize.GraphVisualize([FLAGS.M] * FLAGS.L, True)
+
+
                 for task in range(2):
                     # Generating randomly geopath
                     geopath_set=np.zeros(FLAGS.worker_hosts_num-1,dtype=object);
@@ -201,9 +220,10 @@ def train():
                     print("=============Task "+str(task+1)+"============");
                     score_subset=np.zeros(FLAGS.B,dtype=float);
                     score_set_print=np.zeros(FLAGS.worker_hosts_num,dtype=float);
-                    rand_idx=range(FLAGS.worker_hosts_num-1); np.random.shuffle(rand_idx);
+                    rand_idx=np.arange(FLAGS.worker_hosts_num-1);
+                    np.random.shuffle(rand_idx);
                     rand_idx=rand_idx[:FLAGS.B];
-                    while True:
+                    while sess.run([global_step])[0] <= (MAX_TIME_STEP*(task+1)):
                         # if (sess.run([global_step])[0]) % 1000 == 0:
                         #     print("Saving summary...")
                         #     tf.logging.info('Running Summary operation on the chief.')
@@ -212,8 +232,14 @@ def train():
                         #     tf.logging.info('Finished running Summary operation.')
                         #
                         #     # Determine the next time for running the summary.
-                        if sess.run([global_step])[0] > (MAX_TIME_STEP*(task+1)):
-                            break
+
+
+                        decodePath = lambda p: [np.where(l==1.0)[0] for l in p]
+
+                        vispaths = [ np.array( decodePath(p) ) for p in geopath_set]
+
+                        vis.show(vispaths,'m')
+
                         flag_sum=0;
                         for i in range(FLAGS.worker_hosts_num-1):
                             score_set_print[i]=sess.run([score_set[i]])[0];
@@ -235,13 +261,18 @@ def train():
                                             if((geopath_set[i][j,k]==1.0)or(fixed_path[j,k]==1.0)):
                                                 tmp[j,k]=1.0;
                                     pathnet.geopath_insert(sess,training_thread.local_network.geopath_update_placeholders_set[i],training_thread.local_network.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
-                                sess.run(score_set_ops[i],{score_set_ph[i]:-1000});
-                            rand_idx=range(FLAGS.worker_hosts_num-1); np.random.shuffle(rand_idx);
-                            rand_idx=rand_idx[:FLAGS.B];
+                                sess.run(score_set_ops[i],{score_set_ph[i]:-1000})
+                            rand_idx=np.arange(FLAGS.worker_hosts_num-1)
+                            np.random.shuffle(rand_idx)
+                            rand_idx=rand_idx[:FLAGS.B]
                         else:
                             time.sleep(2);
                     # fixed_path setting
-                    fixed_path=geopath_set[winner_idx];
+                    fixed_path=geopath_set[winner_idx]
+
+                    vis.set_fixed(decodePath(fixed_path), 'r' if task == 0 else 'g')
+                    #vis.show(vispaths, 'm')
+                    print('fix')
                     for i in range(FLAGS.L):
                         for j in range(FLAGS.M):
                             if(fixed_path[i,j]==1.0):
@@ -257,6 +288,8 @@ def train():
                     for i in range(len(vars_idx)):
                         if(vars_idx[i]==1.0):
                             sess.run(vars_ops[i],{vars_ph[i]:vars_backup[i]});
+
+                vis.waitForButtonPress()
         sv.stop();
 
 

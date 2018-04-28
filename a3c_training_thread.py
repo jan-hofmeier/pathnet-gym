@@ -9,7 +9,7 @@ import sys
 from game_state import GameState
 
 # from game_ac_network import GameACFFNetwork, GameACLSTMNetwork, GameACPathNetNetwork
-from game_ac_network import GameACPathNetNetwork
+from game_ac_network import GameACPathNetNetwork, GameACPathNetLSTMNetwork
 
 from constants import GAMMA
 from constants import LOCAL_T_MAX
@@ -42,7 +42,12 @@ class A3CTrainingThread(object):
         self.learning_rate_input = learning_rate_input
         self.max_global_time_step = max_global_time_step
 
-        self.local_network = GameACPathNetNetwork(training_stage, thread_index, device,FLAGS)
+        #self.local_network = GameACPathNetNetwork(training_stage, thread_index, device,FLAGS)
+        FLAGS.use_lstm = USE_LSTM
+        if (USE_LSTM):
+            self.local_network = GameACPathNetLSTMNetwork(training_stage, thread_index, device, FLAGS)
+        else:
+            self.local_network = GameACPathNetNetwork(training_stage, thread_index, device, FLAGS)
 
         self.local_network.prepare_loss(ENTROPY_BETA)
 
@@ -104,6 +109,9 @@ class A3CTrainingThread(object):
         terminal_end = False
 
         start_local_t = self.local_t
+
+        if FLAGS.use_lstm:
+            start_lstm_state = self.local_network.lstm_state_out
 
         res_reward=-1000;
         # t_max times loop
@@ -173,18 +181,39 @@ class A3CTrainingThread(object):
 
         cur_learning_rate = self._anneal_learning_rate(global_t)
 
-        var_idx=self.local_network.get_vars_idx();
-        gradients_list=[];
-        for i in range(len(var_idx)):
-            if(var_idx[i]==1.0):
-                gradients_list+=[self.apply_gradients[i]];
-        sess.run(gradients_list,
-                feed_dict = {
-                    self.local_network.s: batch_si,
-                    self.local_network.a: batch_a,
-                    self.local_network.td: batch_td,
-                    self.local_network.r: batch_R,
-                    self.learning_rate_input: cur_learning_rate} )
+        if FLAGS.use_lstm:
+            batch_si.reverse()
+            batch_a.reverse()
+            batch_td.reverse()
+            batch_R.reverse()
+
+            var_idx = self.local_network.get_vars_idx();
+            gradients_list = [];
+            for i in range(len(var_idx)):
+                if (var_idx[i] == 1.0):
+                    gradients_list += [self.apply_gradients[i]];
+            sess.run(gradients_list,
+                     feed_dict={
+                         self.local_network.s: batch_si,
+                         self.local_network.a: batch_a,
+                         self.local_network.td: batch_td,
+                         self.local_network.r: batch_R,
+                         self.local_network.initial_lstm_state: start_lstm_state,
+                         self.local_network.step_size: [len(batch_a)],
+                         self.learning_rate_input: cur_learning_rate})
+        else:
+            var_idx=self.local_network.get_vars_idx();
+            gradients_list=[];
+            for i in range(len(var_idx)):
+                if(var_idx[i]==1.0):
+                    gradients_list+=[self.apply_gradients[i]];
+            sess.run(gradients_list,
+                    feed_dict = {
+                        self.local_network.s: batch_si,
+                        self.local_network.a: batch_a,
+                        self.local_network.td: batch_td,
+                        self.local_network.r: batch_R,
+                        self.learning_rate_input: cur_learning_rate} )
 
         # if (self.training_stage == 0):
         #     sess.run(gradients_list,

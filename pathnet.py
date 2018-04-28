@@ -33,18 +33,18 @@ def mutation(geopath,L,M,N):
   for i in range(L):
     for j in range(M):
       if(geopath[i,j]==1):
-        rand_value=int(np.random.rand()*L*N);
+        rand_value=int(np.random.rand()*L*N)
         if(rand_value<=1):
-          geopath[i,j]=0;
-          rand_value2=np.random.randint(-2,2);
-          rand_value2=rand_value2-2;
+          geopath[i,j]=0
+          rand_value2=np.random.randint(-2,2)
+          rand_value2=rand_value2-2
           if(((j+rand_value2)>=0)&((j+rand_value2)<M)):
-            geopath[i,j+rand_value2]=1;
+            geopath[i,j+rand_value2]=1
           else:
             if((j+rand_value2)<0):
-              geopath[i,0]=1;
+              geopath[i,0]=1
             elif((j+rand_value2)>=M):
-              geopath[i,M-1]=1;
+              geopath[i,M-1]=1
   return geopath;
 
 def select_two_candi(M):
@@ -145,7 +145,7 @@ def module2(i,input_tensor, weights, biases, layer_name, act=tf.nn.relu):
         variable_summaries(weights[0])
       with tf.name_scope('biases'):
         variable_summaries(biases[0])
-      with tf.name_scope('Wx_plus_b'):
+      with tf.name_scope('Wx_p  lus_b'):
         preactivate = tf.matmul(input_tensor, weights[0]) + biases
         tf.summary.histogram('pre_activations', preactivate)
       activations = act(preactivate, name='activation')+input_tensor

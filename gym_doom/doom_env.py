@@ -70,7 +70,7 @@ class DoomEnv(gym.Env):
         self.viewer = None
         self.is_initialized = False                 # Indicates that reset() has been called
         self.curr_seed = 0
-        self.lock = multiprocessing.Lock()
+        self.lock = DoomLock().get_lock() #multiprocessing.Lock()
         self.action_space = spaces.MultiDiscrete([[0, 1]] * 38 + [[-10, 10]] * 2 + [[-100, 100]] * 3)
         self.allowed_actions = list(range(NUM_ACTIONS))
         self.screen_height = 480
@@ -123,17 +123,17 @@ class DoomEnv(gym.Env):
             self.game.set_mode(Mode.PLAYER)
             self.no_render = False
             # with self.lock:
-            self.game.init()
-            # try:
-            #     with self.lock:
-            #         self.game.init()
-            # except (ViZDoomUnexpectedExitException, ViZDoomErrorException) as e:
-            #     raise error.Error(
-            #         'VizDoom exited unexpectedly. This is likely caused by a missing multiprocessing lock. ' +
-            #         'To run VizDoom across multiple processes, you need to pass a lock when you configure the env ' +
-            #         '[e.g. env.configure(lock=my_multiprocessing_lock)], or create and close an env ' +
-            #         'before starting your processes [e.g. env = gym.make("DoomBasic-v0"); env.close()] to cache a ' +
-            #         'singleton lock in memory. ' + '{}'.format(e))
+            #self.game.init()
+            try:
+                 with self.lock:
+                     self.game.init()
+            except (ViZDoomUnexpectedExitException, ViZDoomErrorException) as e:
+                 raise error.Error(
+                     'VizDoom exited unexpectedly. This is likely caused by a missing multiprocessing lock. ' +
+                     'To run VizDoom across multiple processes, you need to pass a lock when you configure the env ' +
+                     '[e.g. env.configure(lock=my_multiprocessing_lock)], or create and close an env ' +
+                     'before starting your processes [e.g. env = gym.make("DoomBasic-v0"); env.close()] to cache a ' +
+                     'singleton lock in memory. ' + '{}'.format(e))
             self._start_episode()
             self.is_initialized = True
             return
