@@ -162,6 +162,10 @@ def train():
                                  summary_op=summary_op,
                                  saver=saver,
                                  init_op=init_op)
+        try:
+            os.mkdir("./data/graphs")
+        except:
+            pass
 
         # config = tf.ConfigProto(
         #         device_count = {'GPU': 0}
@@ -236,10 +240,6 @@ def train():
 
                         decodePath = lambda p: [np.where(l==1.0)[0] for l in p]
 
-                        vispaths = [ np.array( decodePath(p) ) for p in geopath_set]
-
-                        vis.show(vispaths,'m')
-
                         flag_sum=0;
                         for i in range(FLAGS.worker_hosts_num-1):
                             score_set_print[i]=sess.run([score_set[i]])[0];
@@ -249,6 +249,9 @@ def train():
                                 flag_sum=1;
                                 break;
                         if(flag_sum==0):
+                            vispaths = [np.array(decodePath(p)) for p in geopath_set]
+                            vis.show(vispaths, 'm')
+
                             winner_idx=rand_idx[np.argmax(score_subset)];
                             print(str(sess.run([global_step])[0])+" Step Score: "+str(sess.run([score_set[winner_idx]])[0]));
                             for i in rand_idx:

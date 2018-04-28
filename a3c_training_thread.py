@@ -171,7 +171,7 @@ class A3CTrainingThread(object):
             R = ri + GAMMA * R
             td = R - Vi
             # a = np.zeros([ACTION_SIZEZ[self.training_stage]])
-            a = np.zeros([ACTION_SIZEZ[0]])
+            a = np.zeros(max(ACTION_SIZEZ))
             a[ai] = 1
 
             batch_si.append(si)

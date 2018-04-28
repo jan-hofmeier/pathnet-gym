@@ -32,6 +32,8 @@ class GameState(object):
         self.reset()
 
     def _process_frame(self, action, reshape):
+        if action>=self.env.action_space.n:
+            action=0
         observation, reward, terminal, info = self.env.step(action)
         self._screen = cv2.cvtColor(observation, cv2.COLOR_BGR2GRAY)
         reshaped_screen = np.reshape(self._screen, (observation.shape[0], observation.shape[1]))

@@ -29,7 +29,7 @@ class GameACNetwork(object):
             # taken action (input for policy)
             # self.a_source = tf.placeholder("float", [None, ACTION_SIZEZ[0]])
             # self.a_target = tf.placeholder("float", [None, ACTION_SIZEZ[1]])
-            self.a = tf.placeholder("float", [None, ACTION_SIZEZ[0]])
+            self.a = tf.placeholder("float", [None, max(ACTION_SIZEZ)])
 
             # temporary difference (R-V) (intraining_stageput for policy)
             self.td = tf.placeholder("float", [None])
@@ -148,7 +148,7 @@ class GameACPathNetNetwork(GameACNetwork):
             # weight for policy output layer
             # self.W_fc2_source, self.b_fc2_source = self._fc_variable([256, ACTION_SIZEZ[0]])
             # self.W_fc2_target, self.b_fc2_target = self._fc_variable([256, ACTION_SIZEZ[1]])
-            self.W_fc2, self.b_fc2 = self._fc_variable([256, ACTION_SIZEZ[0]])
+            self.W_fc2, self.b_fc2 = self._fc_variable([256, max(ACTION_SIZEZ)])
 
             # weight for value output layer
             self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
@@ -307,7 +307,6 @@ class GameACPathNetLSTMNetwork(GameACNetwork):
                  , FLAGS=""):
         GameACNetwork.__init__(self, training_stage, thread_index, device)
 
-        self.W_fc2 = None
         self.set_training_stage(training_stage)
 
         self.task_index = FLAGS.task_index;
@@ -340,7 +339,7 @@ class GameACPathNetLSTMNetwork(GameACNetwork):
                 self.W_lin[i], self.b_lin[i] = self._fc_variable([last_lin_num, 256])
 
             # weight for policy output layer
-            self.W_fc2, self.b_fc2 = self._fc_variable([256, self._action_size])
+            self.W_fc2, self.b_fc2 = self._fc_variable([256, max(ACTION_SIZEZ)])
 
             # weight for value output layer
             self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
@@ -443,9 +442,6 @@ class GameACPathNetLSTMNetwork(GameACNetwork):
     def set_training_stage(self, training_stage):
         self.training_stage = training_stage
         self._action_size = ACTION_SIZEZ[training_stage]
-        if self.W_fc2 != None:
-            self.W_fc2.set_shape([256, self._action_size])
-            self.b_fc2.set_shape([self._action_size])
 
     def run_policy_and_value(self, sess, s_t):
         # This run_policy_and_value() is used when forward propagating.
