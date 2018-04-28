@@ -3,6 +3,8 @@ import pylab
 from matplotlib.pyplot import pause, waitforbuttonpress
 import networkx as nx
 import numpy as np
+from threading import Thread
+import time
 
 
 class GraphVisualize():
@@ -93,6 +95,8 @@ class GraphVisualize():
             #pause(0.5)
             self.get_fig(genes, color)
             pylab.draw()
+            #if int(time.time())%60:
+            pylab.savefig("./data/graphs/Graph" + str(time.time()) + ".png", format="PNG")
             pause(0.05)
             #pause(3)
 
