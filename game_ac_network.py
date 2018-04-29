@@ -131,7 +131,8 @@ class GameACPathNetNetwork(GameACNetwork):
             stride_size=np.array(FLAGS.stride_size.split(","),dtype=int);
             feature_num=[8,8,8];
             # last_lin_num=392;
-            last_lin_num=1280;
+            # last_lin_num=1280
+            last_lin_num = 1408
             for i in range(FLAGS.L-1):
                 for j in range(FLAGS.M):
                     if(i==0):
@@ -176,7 +177,7 @@ class GameACPathNetNetwork(GameACNetwork):
                     self.fixed_list[i,j]='0';
 
             # state (input)
-            self.s = tf.placeholder("float", [None, 160, 110, 4])
+            self.s = tf.placeholder("float", [None, 160, 120, 4])
 
             for i in range(FLAGS.L):
                 layer_modules_list=np.zeros(FLAGS.M,dtype=object);
@@ -318,10 +319,11 @@ class GameACPathNetLSTMNetwork(GameACNetwork):
             kernel_num = np.array(FLAGS.kernel_num.split(","), dtype=int);
             stride_size = np.array(FLAGS.stride_size.split(","), dtype=int);
             feature_num = [8, 8, 8];
-            #last_lin_num = 392;
-            # last_lin_num=648;
-            # last_lin_num=2592;
-            last_lin_num = 1280
+            # last_lin_num = 392
+            # last_lin_num = 648
+            # last_lin_num = 2592
+            # last_lin_num = 1280
+            last_lin_num = 1408
 
             for i in range(FLAGS.L - 1):
                 for j in range(FLAGS.M):
@@ -371,7 +373,7 @@ class GameACPathNetLSTMNetwork(GameACNetwork):
                     # state (input)
             #self.s = tf.placeholder("float", [None, 84, 84, 4])
 
-            self.s = tf.placeholder("float", [None, 160, 110, 4])
+            self.s = tf.placeholder("float", [None, 160, 120, 4])
 
             for i in range(FLAGS.L):
                 layer_modules_list = np.zeros(FLAGS.M, dtype=object);

@@ -11,8 +11,11 @@ from constants import ACTION_SPACE_TYPE
 import gym
 import gym.utils
 from gym import wrappers
+import os
+import tensorflow as tf
 #import gym_doom
 #from gym_doom.wrappers import *
+
 
 class GameState(object):
     def __init__(self, rand_seed, ROM, display=True, no_op_max=7, task_index=-1):
@@ -21,7 +24,7 @@ class GameState(object):
 #        action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
         self.env = gym.make(self.ROM)
         self.env.close()
-        #self.env = action_space_wrapper(self.env)
+        # self.env = action_space_wrapper(self.env)
         self.display = display
         if (self.display):
             self.env = wrappers.Monitor(self.env, GYM_MONITOR_DIR + '-' + self.ROM)
@@ -39,9 +42,10 @@ class GameState(object):
         reshaped_screen = np.reshape(self._screen, (observation.shape[0], observation.shape[1]))
 
         resized_screen = cv2.resize(reshaped_screen, (120, 160))
-        x_t = resized_screen[:,10:]
+        x_t = resized_screen  # [:,10:]
         if reshape:
-            x_t = np.reshape(x_t, (160, 110, 1))
+            x_t = np.reshape(x_t, (160, 120, 1))
+        # cv2.imwrite("data/image/x_t" + str(time.time()) + ".png", x_t)
         x_t = x_t.astype(np.float32)
         x_t *= (1.0/255.0)
         return reward, terminal, x_t
