@@ -28,5 +28,5 @@ MAX_TIME_STEP = 4 * 10**6 #1 * 10**5
 GRAD_NORM_CLIP = 40.0 # gradient norm clipping
 NUM_GPUS = 3
 USE_GPU = False # To use GPU, set True
-USE_LSTM = True # True for A3C LSTM, False for A3C FF
+USE_LSTM = False # True for A3C LSTM, False for A3C FF
 USE_PATHNET = True # True for A3C PathNet, False for A3C FF

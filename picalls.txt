@@ -1,0 +1,7 @@
+ac = pi.pdtype.sample_placeholder([None])
+oldpi.pd.kl(pi.pd)
+pi.pd.entropy()
+pi.pd.logp(ac) - oldpi.pd.logp(ac)
+pi.get_trainable_variables()
+pi.vpred
+ac, vpred = pi.act(stochastic, ob)
