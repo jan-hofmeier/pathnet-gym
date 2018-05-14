@@ -4,6 +4,8 @@ import numpy as np
 import pathnet
 from baselines.common.distributions import make_pdtype
 import baselines.common.tf_util as U
+from constants import ROMZ
+import gym
 
 #from constants import ACTION_SIZEZ
 
@@ -129,32 +131,43 @@ class GameACPathNetNetwork(GameACNetwork):
             # policy (output)
             # self.pi_source = tf.nn.softmax(tf.matmul(net, self.W_fc2_source) + self.b_fc2_source)
             # self.pi_target = tf.nn.softmax(tf.matmul(net, self.W_fc2_target) + self.b_fc2_target)
-            self.pi = tf.nn.softmax(tf.matmul(net, self.W_fc2) + self.b_fc2)
+            #self.pi = tf.nn.softmax(tf.matmul(net, self.W_fc2) + self.b_fc2)
             # value (output)
-            v_ = tf.matmul(net, self.W_fc3) + self.b_fc3
-            self.v = tf.reshape( v_, [-1] )
+            #v_ = tf.matmul(net, self.W_fc3) + self.b_fc3
+            #self.v = tf.reshape( v_, [-1] )
 
+            # weight for value output layer
+            self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
+            self.vpred = tf.reshape(tf.matmul(self.net, self.W_fc3) + self.b_fc3, [-1])
+
+            self.pdtypes = []
+            self.pWeights = []
+            self.pds = []
+            self._acts = []
+            stochastic = tf.placeholder(dtype=tf.bool, shape=())
+            for rom in ROMZ:
+                env = gym.make(rom)
+                pdtype=make_pdtype(env.action_space);
+                self.pdtypes += [pdtype]
+                W_fc2, b_fc2 = self._fc_variable([256, pdtype.param_shape()[0]])
+                self.pWeights+=[(W_fc2, b_fc2)]
+                logits = tf.matmul(self.net, W_fc2) + b_fc2
+                pd = pdtype.pdfromflat(logits)
+                self.pds += [pd]
+
+                ac = pd.sample()  # XXX
+                self._acts += [U.function([stochastic, self.s], [ac, self.vpred])]
+                env.close()
             # set_fixed_path
-            self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
+            self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
 
-    def set_training_stage(self, ac_space):
-        self.pdtype = make_pdtype(ac_space)
+    def set_training_stage(self, stage):
+        self.pdtype = self.pdtypes[stage]
 
-        # weight for policy output layer
-        # self.W_fc2_source, self.b_fc2_source = self._fc_variable([256, ACTION_SIZEZ[0]])
-        # self.W_fc2_target, self.b_fc2_target = self._fc_variable([256, ACTION_SIZEZ[1]])
-        self.W_fc2, self.b_fc2 = self._fc_variable([256, self.pdtype.param_shape()[0]])
+        self.W_fc2, self.b_fc2 = self.pWeights[stage]
+        self.pd = self.pds[stage]
+        self._act=self._acts[stage]
 
-        # weight for value output layer
-        self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
-
-        logits = tf.matmul(self.net, self.W_fc2) + self.b_fc2
-        self.pd = self.pdtype.pdfromflat(logits)
-        self.vpred = tf.reshape(tf.matmul(self.net, self.W_fc3) + self.b_fc3, [-1])
-
-        stochastic = tf.placeholder(dtype=tf.bool, shape=())
-        ac = self.pd.sample() # XXX
-        self._act = U.function([stochastic, self.s], [ac, self.vpred])
 
 
     def act(self, stochastic, ob):
@@ -171,7 +184,7 @@ class GameACPathNetNetwork(GameACNetwork):
     def set_fixed_path(self,fixed_path):
         self.fixed_path=fixed_path;
 
-    def get_vars(self):
+    def get_vars_to_initilize(self):
         res=[];
         for i in range(len(self.W_conv)):
             for j in range(len(self.W_conv[0])):
@@ -183,12 +196,13 @@ class GameACPathNetNetwork(GameACNetwork):
         # if (self.training_stage == 0):
             # res+=[self.W_fc2_source]+[self.b_fc2_source];
             # res+=[self.W_fc3]+[self.b_fc3];
-        res+=[self.W_fc2]+[self.b_fc2];
+        #res+=[self.W_fc2]+[self.b_fc2];
         res+=[self.W_fc3]+[self.b_fc3];
         return res;
 
+
     def get_trainable_variables(self):
-        return self.get_vars()
+        return self.get_vars_to_initilize()
 
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)

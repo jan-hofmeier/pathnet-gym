@@ -143,7 +143,7 @@ def train():
                     fixed_path_ph[i,j]=tf.placeholder(fixed_path_tf[i,j].dtype,shape=fixed_path_tf[i,j].get_shape());
                     fixed_path_ops[i,j]=fixed_path_tf[i,j].assign(fixed_path_ph[i,j]);
             # parameters on PathNet
-            vars_=training_thread.pi.get_vars();
+            vars_=training_thread.pi.get_vars_to_initilize()
             vars_ph=np.zeros(len(vars_),dtype=object);
             vars_ops=np.zeros(len(vars_),dtype=object);
             for i in range(len(vars_)):
@@ -218,7 +218,7 @@ def train():
                             for k in range(FLAGS.M):
                                 if((geopath_set[i][j,k]==1.0)or(fixed_path[j,k]==1.0)):
                                     tmp[j,k]=1.0;
-                        pathnet.geopath_insert(sess,training_thread.local_network.geopath_update_placeholders_set[i],training_thread.local_network.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
+                        pathnet.geopath_insert(sess,training_thread.pi.geopath_update_placeholders_set[i],training_thread.pi.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
                     print("Geopath Setting Done");
                     sess.run(flag_ops,{flag_ph:(task+1)});
                     print("=============Task "+str(task+1)+"============");

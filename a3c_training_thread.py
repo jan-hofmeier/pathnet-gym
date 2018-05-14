@@ -56,6 +56,7 @@ class A3CTrainingThread(object):
         self.pi = GameACPathNetNetwork("pi", thread_index, device,FLAGS)
         self.oldpi = GameACPathNetNetwork("oldpi", thread_index, device, FLAGS, self.pi.geopath_set)
 
+        self.local_t = 0
         return
 
 
@@ -71,7 +72,7 @@ class A3CTrainingThread(object):
             self.local_network.get_vars(),
             self.gradients )
 
-        self.local_t = 0
+
 
         self.initial_learning_rate = initial_learning_rate
 
@@ -84,8 +85,8 @@ class A3CTrainingThread(object):
         self.training_stage = training_stage
         self.game_state = GameState(113 * self.task_index, ROMZ[training_stage], display=False,
                                      task_index=self.task_index)
-        self.pi.set_training_stage(self.game_state.get_ac_space())
-        self.oldpi.set_training_stage(self.game_state.get_ac_space())
+        self.pi.set_training_stage(training_stage)
+        self.oldpi.set_training_stage(training_stage)
         print("Setting training task to:  " + ROMZ[training_stage] + ", with action size: " + str(ACTION_SIZEZ[self.training_stage]))
         if training_stage == 1:
             self.game_state.close_env()

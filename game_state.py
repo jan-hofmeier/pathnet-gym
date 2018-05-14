@@ -23,8 +23,8 @@ class GameState(object):
         self.task_index = task_index
         self.ROM = ROM
 #        action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
-        self.env = make_atari(self.ROM)
-        self.env = wrap_deepmind(self.env)
+        self.env = gym.make(self.ROM)
+        #self.env = wrap_deepmind(self.env)
         # self.env = action_space_wrapper(self.env)
         self.display = display
         if (self.display):
