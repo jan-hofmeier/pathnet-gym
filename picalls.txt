@@ -5,3 +5,31 @@ pi.pd.logp(ac) - oldpi.pd.logp(ac)
 pi.get_trainable_variables()
 pi.vpred
 ac, vpred = pi.act(stochastic, ob)
+
+
+    def get_vars(self):
+        res=[];
+        for i in range(len(self.W_conv)):
+            for j in range(len(self.W_conv[0])):
+                if(self.fixed_path[i,j]==0.0):
+                    res+=[self.W_conv[i,j]]+[self.b_conv[i,j]];
+        for i in range(len(self.W_lin)):
+            if(self.fixed_path[-1,i]==0.0):
+                res+=[self.W_lin[i]]+[self.b_lin[i]];
+        # if (self.training_stage == 0):
+            # res+=[self.W_fc2_source]+[self.b_fc2_source];
+            # res+=[self.W_fc3]+[self.b_fc3];
+        res+=[self.W_fc2]+[self.b_fc2];
+        res+=[self.W_fc3]+[self.b_fc3];
+        return res;
+
+
+vars_=training_thread.local_network.get_vars()
+
+training_thread.set_training_stage(task)
+training_thread.local_network.set_fixed_path(fixed_path)
+training_thread.set_start_time(start_time)
+diff_global_t = training_thread.process(sess, sess.run([global_step])[0], "",  summary_op, "",score_ph,score_ops,"",FLAGS,score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
+pathnet.geopath_insert(sess,training_thread.local_network.geopath_update_placeholders_set[i],training_thread.local_network.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M)
+training_thread.local_network.set_fixed_path(fixed_path)
+vars_idx=training_thread.local_network.get_vars_idx()

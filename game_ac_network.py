@@ -62,12 +62,11 @@ class GameACPathNetNetwork(GameACNetwork):
                  name,
                  thread_index, # -1 for global
                  device="/cpu:0",
-                 FLAGS=""):
+                 FLAGS="", geopath_set = None):
         GameACNetwork.__init__(self,
-                               name,
                                thread_index,
                                device)
-
+        self.geopath_set = geopath_set
         self.task_index=FLAGS.task_index;
         scope_name = name +"net_" + str(self._thread_index)
         with tf.device(self._device), tf.variable_scope(scope_name) as scope:
@@ -93,27 +92,22 @@ class GameACPathNetNetwork(GameACNetwork):
             for i in range(FLAGS.M):
                 self.W_lin[i], self.b_lin[i] = self._fc_variable([last_lin_num, 256])
 
-            # geopath_examples
-            self.geopath_set=np.zeros(FLAGS.worker_hosts_num,dtype=object);
-            for i in range(FLAGS.worker_hosts_num):
-                self.geopath_set[i]=pathnet.geopath_initializer(FLAGS.L,FLAGS.M);
+            if self.geopath_set == None:
+                # geopath_examples
+                self.geopath_set=np.zeros(FLAGS.worker_hosts_num,dtype=object);
+                for i in range(FLAGS.worker_hosts_num):
+                    self.geopath_set[i]=pathnet.geopath_initializer(FLAGS.L,FLAGS.M);
 
-            # geopathes placeholders and ops
-            self.geopath_update_ops_set=np.zeros((FLAGS.worker_hosts_num,FLAGS.L,FLAGS.M),dtype=object);
-            self.geopath_update_placeholders_set=np.zeros((FLAGS.worker_hosts_num,FLAGS.L,FLAGS.M),dtype=object);
-            for s in range(FLAGS.worker_hosts_num):
-                for i in range(len(self.geopath_set[0])):
-                    for j in range(len(self.geopath_set[0][0])):
-                        tf.placeholder(self.geopath_set[s][i,j].dtype,shape=self.geopath_set[s][i,j].get_shape());
-                        self.geopath_update_placeholders_set[s][i,j]=tf.placeholder(self.geopath_set[s][i,j].dtype,shape=self.geopath_set[s][i,j].get_shape());
-                        self.geopath_update_ops_set[s][i,j]=self.geopath_set[s][i,j].assign(self.geopath_update_placeholders_set[s][i,j]);
+                # geopathes placeholders and ops
+                self.geopath_update_ops_set=np.zeros((FLAGS.worker_hosts_num,FLAGS.L,FLAGS.M),dtype=object);
+                self.geopath_update_placeholders_set=np.zeros((FLAGS.worker_hosts_num,FLAGS.L,FLAGS.M),dtype=object);
+                for s in range(FLAGS.worker_hosts_num):
+                    for i in range(len(self.geopath_set[0])):
+                        for j in range(len(self.geopath_set[0][0])):
+                            tf.placeholder(self.geopath_set[s][i,j].dtype,shape=self.geopath_set[s][i,j].get_shape());
+                            self.geopath_update_placeholders_set[s][i,j]=tf.placeholder(self.geopath_set[s][i,j].dtype,shape=self.geopath_set[s][i,j].get_shape());
+                            self.geopath_update_ops_set[s][i,j]=self.geopath_set[s][i,j].assign(self.geopath_update_placeholders_set[s][i,j]);
 
-
-            # fixed weights list
-            self.fixed_list=np.ones((FLAGS.L,FLAGS.M),dtype=str);
-            for i in range(FLAGS.L):
-                for j in range(FLAGS.M):
-                    self.fixed_list[i,j]='0';
 
             # state (input)
             self.s = tf.placeholder("float", [None, 160, 120, 4])
@@ -143,7 +137,7 @@ class GameACPathNetNetwork(GameACNetwork):
             # set_fixed_path
             self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
 
-    def set_training_stage(self, stage, session, ac_space):
+    def set_training_stage(self, ac_space):
         self.pdtype = make_pdtype(ac_space)
 
         # weight for policy output layer

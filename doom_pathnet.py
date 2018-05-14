@@ -143,7 +143,7 @@ def train():
                     fixed_path_ph[i,j]=tf.placeholder(fixed_path_tf[i,j].dtype,shape=fixed_path_tf[i,j].get_shape());
                     fixed_path_ops[i,j]=fixed_path_tf[i,j].assign(fixed_path_ph[i,j]);
             # parameters on PathNet
-            vars_=training_thread.local_network.get_vars();
+            vars_=training_thread.pi.get_vars();
             vars_ph=np.zeros(len(vars_),dtype=object);
             vars_ops=np.zeros(len(vars_),dtype=object);
             for i in range(len(vars_)):
@@ -188,7 +188,7 @@ def train():
                         for j in range(FLAGS.M):
                             if(sess.run([fixed_path_tf[i,j]])[0]==1):
                                 fixed_path[i,j]=1.0;
-                    training_thread.local_network.set_fixed_path(fixed_path);
+                    training_thread.set_fixed_path(fixed_path);
                     # set start_time
                     wall_t=0.0;
                     start_time = time.time() - wall_t
@@ -280,14 +280,14 @@ def train():
                         for j in range(FLAGS.M):
                             if(fixed_path[i,j]==1.0):
                                 sess.run(fixed_path_ops[i,j],{fixed_path_ph[i,j]:1});
-                    training_thread.local_network.set_fixed_path(fixed_path);
+                    training_thread.set_fixed_path(fixed_path);
 
                     # backup fixed vars
                     # FIXED_VARS_BACKUP = training_thread.local_network.get_fixed_vars();
                     # FIXED_VARS_IDX_BACKUP = training_thread.local_network.get_fixed_vars_idx();
 
                     # initialization of parameters except fixed_path
-                    vars_idx=training_thread.local_network.get_vars_idx();
+                    vars_idx=training_thread.pi.get_vars_idx();
                     for i in range(len(vars_idx)):
                         if(vars_idx[i]==1.0):
                             sess.run(vars_ops[i],{vars_ph[i]:vars_backup[i]});
