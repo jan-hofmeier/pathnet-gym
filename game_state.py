@@ -58,6 +58,7 @@ class GameState(object):
 
     def step(self, action):
         observation, reward, terminal, info = self.env.step(action)
+        self.env.render()
         x_t = self.preprocess_ob(observation)
         return x_t, reward, terminal, info
 

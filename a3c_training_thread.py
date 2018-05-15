@@ -48,6 +48,7 @@ class A3CTrainingThread(object):
 
         clip_param = 0.2
         entcoeff = 0.01
+        adam_epsilon = 1e-5
 
         print("Initializing worker #{}".format(task_index))
         self.training_stage = training_stage
@@ -76,22 +77,38 @@ class A3CTrainingThread(object):
         self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
 
         self.stage_dependend = []
+
         for i, _ in enumerate(ROMZ):
-            ac = self.pi.pdtypes[i].sample_placeholder([None])
-            kloldnew = self.oldpi.pds[i].kl(self.pi.pds[i])
-            ent = self.pi.pds[i].entropy()
+            self.pi.set_training_stage(i)
+            self.oldpi.set_training_stage(i)
+            ac = self.pi.pdtype.sample_placeholder([None])
+            kloldnew = self.oldpi.pd.kl(self.pi.pd)
+            ent = self.pi.pd.entropy()
             meankl = tf.reduce_mean(kloldnew)
             meanent = tf.reduce_mean(ent)
             pol_entpen = (-entcoeff) * meanent
 
-            ratio = tf.exp(self.pi.pds[i].logp(ac) - self.oldpi.pds[i].logp(ac))  # pnew / pold
+            ratio = tf.exp(self.pi.pd.logp(ac) - self.oldpi.pd.logp(ac))  # pnew / pold
             surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
             surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * self.atarg  #
             pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
 
             total_loss = pol_surr + pol_entpen + self.vf_loss
 
-            self.stage_dependend+=[(ac,meankl, meanent, pol_entpen,pol_surr,total_loss)]
+            losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
+
+            grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
+            lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
+
+            compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
+
+            adam = MpiAdam(self.pi.get_trainable_variables(), epsilon=adam_epsilon)
+
+            assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
+                                                            for (oldv, newv) in
+                                                            zipsame(self.oldpi.get_trainable_variables(), self.pi.get_trainable_variables())])
+
+            self.stage_dependend+=[(ac,meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new, adam)]
 
         return
 
@@ -127,7 +144,7 @@ class A3CTrainingThread(object):
         if training_stage == 1:
             self.game_state.close_env()
 
-        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss)=self.stage_dependend[training_stage]
+        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss, self.lossandgrad, self.compute_losses, self.assign_old_eq_new, self.adam)=self.stage_dependend[training_stage]
 
     def _anneal_learning_rate(self, global_time_step):
         learning_rate = self.initial_learning_rate * (self.max_global_time_step - global_time_step) / self.max_global_time_step
@@ -148,116 +165,6 @@ class A3CTrainingThread(object):
     def set_start_time(self, start_time):
         self.start_time = start_time
 
-    def processOld(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
-
-        states = []
-        actions = []
-        rewards = []
-        values = []
-
-        terminal_end = False
-
-        start_local_t = self.local_t
-
-        if FLAGS.use_lstm:
-            start_lstm_state = self.local_network.lstm_state_out
-
-        res_reward=-1000;
-        # t_max times loop
-        for i in range(LOCAL_T_MAX):
-            pi_, value_ = self.local_network.run_policy_and_value(sess, self.game_state.s_t)
-            action = self.choose_action(pi_)
-
-            states.append(self.game_state.s_t)
-            actions.append(action)
-            values.append(value_)
-
-            # process game
-            self.game_state.process(action)
-
-            # receive game result
-            reward = self.game_state.reward
-            terminal = self.game_state.terminal
-
-            self.episode_reward += reward
-
-            # clip reward
-            rewards.append( np.clip(reward, -1, 1) )
-
-            self.local_t += 1
-
-            # s_t1 -> s_t
-            self.game_state.update()
-
-            if terminal:
-                terminal_end = True
-                sess.run(score_ops,{score_ph:self.episode_reward});
-                sess.run(score_set_ops,{score_set_ph:self.episode_reward});
-                res_reward=self.episode_reward;
-                self.episode_reward = 0
-                self.game_state.reset()
-                if USE_LSTM:
-                    self.local_network.reset_state()
-                break
-        if(res_reward==-1000):
-            res_reward=self.episode_reward;
-        R = 0.0
-        if not terminal_end:
-            R = self.local_network.run_value(sess, self.game_state.s_t)
-
-        actions.reverse()
-        states.reverse()
-        rewards.reverse()
-        values.reverse()
-
-        batch_si = []
-        batch_a = []
-        batch_td = []
-        batch_R = []
-
-        # compute and accmulate gradients
-        for(ai, ri, si, Vi) in zip(actions, rewards, states, values):
-            R = ri + GAMMA * R
-            td = R - Vi
-            # a = np.zeros([ACTION_SIZEZ[self.training_stage]])
-            a = np.zeros(max(ACTION_SIZEZ))
-            a[ai] = 1
-
-            batch_si.append(si)
-            batch_a.append(a)
-            batch_td.append(td)
-            batch_R.append(R)
-
-        cur_learning_rate = self._anneal_learning_rate(global_t)
-
-
-        var_idx=self.local_network.get_vars_idx();
-        gradients_list=[];
-        for i in range(len(var_idx)):
-            if(var_idx[i]==1.0):
-                gradients_list+=[self.apply_gradients[i]];
-        sess.run(gradients_list,
-                feed_dict = {
-                    self.local_network.s: batch_si,
-                    self.local_network.a: batch_a,
-                    self.local_network.td: batch_td,
-                    self.local_network.r: batch_R,
-                    self.learning_rate_input: cur_learning_rate} )
-
-
-
-        if (self.task_index == 0) and (self.local_t - self.prev_local_t >= PERFORMANCE_LOG_INTERVAL):
-            self.prev_local_t += PERFORMANCE_LOG_INTERVAL
-            elapsed_time = time.time() - self.start_time
-            steps_per_sec = global_t / elapsed_time
-            print("### Performance : {} STEPS in {:.0f} sec. {:.0f} STEPS/sec. {:.2f}M STEPS/hour".format(
-                global_t,    elapsed_time, steps_per_sec, steps_per_sec * 3600 / 1000000.))
-
-        # return advanced local step size
-        diff_local_t = self.local_t - start_local_t
-        return diff_local_t;
-
-
     def process(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
 
         max_timesteps=int(LOCAL_T_MAX * 1.1)
@@ -268,7 +175,6 @@ class A3CTrainingThread(object):
         gamma=0.99
         lam=0.95
         schedule='linear'
-        adam_epsilon = 1e-5
         max_iters = 0
         max_episodes = 0
         max_seconds = 0
@@ -278,20 +184,11 @@ class A3CTrainingThread(object):
         pi = self.pi
         oldpi = self.oldpi
 
-        losses = [self.pol_surr, self.pol_entpen, self.vf_loss, self.meankl, self.meanent]
         loss_names = ["pol_surr", "pol_entpen", "vf_loss", "kl", "ent"]
 
-        var_list = pi.get_trainable_variables()
-        lossandgrad = U.function([self.ob, self.ac, self.atarg, self.ret, self.lrmult], losses + [U.flatgrad(self.total_loss, var_list)])
-        adam = MpiAdam(var_list, epsilon=adam_epsilon)
 
-        assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
-                                                        for (oldv, newv) in
-                                                        zipsame(oldpi.get_variables(), pi.get_variables())])
-        compute_losses = U.function([self.ob, self.ac, self.atarg, self.ret, self.lrmult], losses)
-
-        U.initialize()
-        adam.sync()
+        #U.initialize()
+        self.adam.sync()
 
         # Prepare for rollouts
         # ----------------------------------------
@@ -338,22 +235,22 @@ class A3CTrainingThread(object):
 
             if hasattr(pi, "ob_rms"): pi.ob_rms.update(ob)  # update running mean/std for policy
 
-            assign_old_eq_new()  # set old parameter values to new parameter values
+            self.assign_old_eq_new()  # set old parameter values to new parameter values
             logger.log("Optimizing...")
             logger.log(fmt_row(13, loss_names))
             # Here we do a bunch of optimization epochs over the data
             for _ in range(optim_epochs):
                 losses = []  # list of tuples, each of which gives the loss for a minibatch
                 for batch in d.iterate_once(optim_batchsize):
-                    *newlosses, g = lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
-                    adam.update(g, optim_stepsize * cur_lrmult)
+                    *newlosses, g = self.lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
+                    self.adam.update(g, optim_stepsize * cur_lrmult)
                     losses.append(newlosses)
                 logger.log(fmt_row(13, np.mean(losses, axis=0)))
 
             logger.log("Evaluating losses...")
             losses = []
             for batch in d.iterate_once(optim_batchsize):
-                newlosses = compute_losses(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
+                newlosses = self.compute_losses(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
                 losses.append(newlosses)
             meanlosses, _, _ = mpi_moments(losses, axis=0)
             logger.log(fmt_row(13, meanlosses))

@@ -12,6 +12,7 @@ import gym
 # Actor-Critic Network Base Class
 # (Policy network and Value network)
 class GameACNetwork(object):
+    recurrent = False
     def __init__(self,
                  thread_index, # -1 for global
                  device="/cpu:0"):
@@ -84,7 +85,7 @@ class GameACPathNetNetwork(GameACNetwork):
             for i in range(FLAGS.L-1):
                 for j in range(FLAGS.M):
                     if(i==0):
-                        self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],4,feature_num[i]]);
+                        self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],1,feature_num[i]]);
                     else:
                         self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],feature_num[i-1],feature_num[i]]);
 
@@ -112,7 +113,7 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
             # state (input)
-            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 4])
+            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 1])
 
             for i in range(FLAGS.L):
                 layer_modules_list=np.zeros(FLAGS.M,dtype=object);
@@ -202,7 +203,7 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
     def get_trainable_variables(self):
-        return self.get_vars_to_initilize()
+        return self.get_vars_to_initilize() + [self.W_fc2]+[self.b_fc2]
 
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
