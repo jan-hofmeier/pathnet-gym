@@ -112,7 +112,7 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
             # state (input)
-            self.s = tf.placeholder("float", [None, 160, 120, 4])
+            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 4])
 
             for i in range(FLAGS.L):
                 layer_modules_list=np.zeros(FLAGS.M,dtype=object);

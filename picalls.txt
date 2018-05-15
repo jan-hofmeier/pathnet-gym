@@ -39,8 +39,8 @@ vars_idx=training_thread.local_network.get_vars_idx()
 assign_old_eq_new()  # set old parameter values to new parameter values
 loss_names
 lossandgrad
-compute_losses
-loss_names
+compute_losses  atarg, ob, ac, ret, lrmult, losses , total_loss, var_list   <- should be ok
+loss_names - ok	
 
 
         # Setup losses and stuff

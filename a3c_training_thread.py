@@ -46,6 +46,9 @@ class A3CTrainingThread(object):
                  FLAGS="",
                  task_index=""):
 
+        clip_param = 0.2
+        entcoeff = 0.01
+
         print("Initializing worker #{}".format(task_index))
         self.training_stage = training_stage
         self.thread_index = thread_index
@@ -57,6 +60,39 @@ class A3CTrainingThread(object):
         self.oldpi = GameACPathNetNetwork("oldpi", thread_index, device, FLAGS, self.pi.geopath_set)
 
         self.local_t = 0
+
+
+        # Setup losses and stuff
+        # ----------------------------------------
+        self.atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
+        self.ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
+
+        self.lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
+                                shape=[])  # learning rate multiplier, updated with schedule
+        clip_param = clip_param * self.lrmult  # Annealed cliping parameter epislon
+
+        self.ob = U.get_placeholder_cached(name="ob")
+
+        self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
+
+        self.stage_dependend = []
+        for i, _ in enumerate(ROMZ):
+            ac = self.pi.pdtypes[i].sample_placeholder([None])
+            kloldnew = self.oldpi.pds[i].kl(self.pi.pds[i])
+            ent = self.pi.pds[i].entropy()
+            meankl = tf.reduce_mean(kloldnew)
+            meanent = tf.reduce_mean(ent)
+            pol_entpen = (-entcoeff) * meanent
+
+            ratio = tf.exp(self.pi.pds[i].logp(ac) - self.oldpi.pds[i].logp(ac))  # pnew / pold
+            surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
+            surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * self.atarg  #
+            pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
+
+            total_loss = pol_surr + pol_entpen + self.vf_loss
+
+            self.stage_dependend+=[(ac,meankl, meanent, pol_entpen,pol_surr,total_loss)]
+
         return
 
 
@@ -90,6 +126,8 @@ class A3CTrainingThread(object):
         print("Setting training task to:  " + ROMZ[training_stage] + ", with action size: " + str(ACTION_SIZEZ[self.training_stage]))
         if training_stage == 1:
             self.game_state.close_env()
+
+        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss)=self.stage_dependend[training_stage]
 
     def _anneal_learning_rate(self, global_time_step):
         learning_rate = self.initial_learning_rate * (self.max_global_time_step - global_time_step) / self.max_global_time_step
@@ -222,10 +260,8 @@ class A3CTrainingThread(object):
 
     def process(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
 
-        max_timesteps=int(LOCAL_T_MAX * 1.1),
-        timesteps_per_actorbatch=256,
-        clip_param=0.2
-        entcoeff=0.01,
+        max_timesteps=int(LOCAL_T_MAX * 1.1)
+        timesteps_per_actorbatch=256
         optim_epochs=4
         optim_stepsize=1e-3
         optim_batchsize=64
@@ -242,41 +278,17 @@ class A3CTrainingThread(object):
         pi = self.pi
         oldpi = self.oldpi
 
-        # Setup losses and stuff
-        # ----------------------------------------
-        atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
-        ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
-
-        lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
-                                shape=[])  # learning rate multiplier, updated with schedule
-        clip_param = clip_param * lrmult  # Annealed cliping parameter epislon
-
-        ob = U.get_placeholder_cached(name="ob")
-        ac = pi.pdtype.sample_placeholder([None])
-
-        kloldnew = oldpi.pd.kl(pi.pd)
-        ent = pi.pd.entropy()
-        meankl = tf.reduce_mean(kloldnew)
-        meanent = tf.reduce_mean(ent)
-        pol_entpen = (-entcoeff) * meanent
-
-        ratio = tf.exp(pi.pd.logp(ac) - oldpi.pd.logp(ac))  # pnew / pold
-        surr1 = ratio * atarg  # surrogate from conservative policy iteration
-        surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * atarg  #
-        pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
-        vf_loss = tf.reduce_mean(tf.square(pi.vpred - ret))
-        total_loss = pol_surr + pol_entpen + vf_loss
-        losses = [pol_surr, pol_entpen, vf_loss, meankl, meanent]
+        losses = [self.pol_surr, self.pol_entpen, self.vf_loss, self.meankl, self.meanent]
         loss_names = ["pol_surr", "pol_entpen", "vf_loss", "kl", "ent"]
 
         var_list = pi.get_trainable_variables()
-        lossandgrad = U.function([ob, ac, atarg, ret, lrmult], losses + [U.flatgrad(total_loss, var_list)])
+        lossandgrad = U.function([self.ob, self.ac, self.atarg, self.ret, self.lrmult], losses + [U.flatgrad(self.total_loss, var_list)])
         adam = MpiAdam(var_list, epsilon=adam_epsilon)
 
         assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
                                                         for (oldv, newv) in
                                                         zipsame(oldpi.get_variables(), pi.get_variables())])
-        compute_losses = U.function([ob, ac, atarg, ret, lrmult], losses)
+        compute_losses = U.function([self.ob, self.ac, self.atarg, self.ret, self.lrmult], losses)
 
         U.initialize()
         adam.sync()

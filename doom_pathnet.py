@@ -174,7 +174,7 @@ def train():
         # config.gpu_options.allow_growth = True
         # config.gpu_options.per_process_gpu_memory_fraction = 0.1
 
-        with sv.managed_session(server.target) as sess:
+        with sv.managed_session(server.target) as sess, sess.as_default():
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):
                  for task in range(2):
                     training_thread.set_training_stage(task)
