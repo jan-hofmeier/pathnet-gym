@@ -224,6 +224,15 @@ class A3CTrainingThread(object):
             logger.log("********** Iteration %i ************" % iters_so_far)
 
             seg = seg_gen.__next__()
+
+
+            for new, rew in zip(seg["new"], seg["rew"]):
+                if new:
+                    sess.run(score_ops, {score_ph: rew})
+                    sess.run(score_set_ops, {score_set_ph: rew})
+
+
+
             add_vtarg_and_adv(seg, gamma, lam)
 
             # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
@@ -275,6 +284,7 @@ class A3CTrainingThread(object):
                 logger.dump_tabular()
 
         diff_local_t = self.local_t - start_local_t
+        print("finish process")
         return diff_local_t;
 
 
