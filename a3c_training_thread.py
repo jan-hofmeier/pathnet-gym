@@ -65,16 +65,26 @@ class A3CTrainingThread(object):
 
         # Setup losses and stuff
         # ----------------------------------------
+
+        checkNumeric = lambda x: tf.check_numerics(x,'WARUM???')
+
         self.atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
+        #self.atarg = checkNumeric(self.atarg)
+
         self.ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
+        #self.ret = checkNumeric(self.ret)
 
         self.lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
                                 shape=[])  # learning rate multiplier, updated with schedule
+        #self.lrmult = checkNumeric(self.lrmult)
         clip_param = clip_param * self.lrmult  # Annealed cliping parameter epislon
+        clip_param = checkNumeric(clip_param)
 
         self.ob = U.get_placeholder_cached(name="ob")
+        #self.ob = checkNumeric(self.ob)
 
         self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
+        self.vf_loss = checkNumeric(self.vf_loss)
 
         self.stage_dependend = []
 
@@ -82,33 +92,56 @@ class A3CTrainingThread(object):
             self.pi.set_training_stage(i)
             self.oldpi.set_training_stage(i)
             ac = self.pi.pdtype.sample_placeholder([None])
+
             kloldnew = self.oldpi.pd.kl(self.pi.pd)
+            kloldnew = checkNumeric(kloldnew)
+
             ent = self.pi.pd.entropy()
+            ent = checkNumeric(ent)
+
             meankl = tf.reduce_mean(kloldnew)
             meanent = tf.reduce_mean(ent)
-            pol_entpen = (-entcoeff) * meanent
 
-            ratio = tf.exp(self.pi.pd.logp(ac) - self.oldpi.pd.logp(ac))  # pnew / pold
+            pol_entpen = (-entcoeff) * meanent
+            pol_entpen = checkNumeric(pol_entpen)
+
+            checked_logp = checkNumeric(self.pi.pd.logp(ac))
+            checked_logp_old = checkNumeric(self.oldpi.pd.logp(ac))
+
+            ratio = tf.exp( checked_logp- checked_logp_old)  # pnew / pold
+            ratio = checkNumeric(ratio)
+
             surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
             surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * self.atarg  #
+            surr2 = checkNumeric(surr2)
+
             pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
+            pol_surr = checkNumeric(pol_surr)
 
             total_loss = pol_surr + pol_entpen + self.vf_loss
+            total_loss = checkNumeric(total_loss)
 
             losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
 
             grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
+            grads = checkNumeric(grads)
             lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
 
             compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
 
+            #checked_vars = list(map(checkNumeric,))
             adam = MpiAdam(self.pi.get_trainable_variables(), epsilon=adam_epsilon)
 
             assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
                                                             for (oldv, newv) in
                                                             zipsame(self.oldpi.get_trainable_variables(), self.pi.get_trainable_variables())])
 
-            self.stage_dependend+=[(ac,meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new, adam)]
+            stage_dep=[(ac, meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new,
+              adam)]
+
+
+
+            self.stage_dependend+=stage_dep
 
         return
 

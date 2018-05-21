@@ -263,7 +263,7 @@ def train():
                                         for k in range(FLAGS.M):
                                             if((geopath_set[i][j,k]==1.0)or(fixed_path[j,k]==1.0)):
                                                 tmp[j,k]=1.0;
-                                    pathnet.geopath_insert(sess,training_thread.local_network.geopath_update_placeholders_set[i],training_thread.local_network.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
+                                    pathnet.geopath_insert(sess,training_thread.pi.geopath_update_placeholders_set[i],training_thread.pi.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
                                 sess.run(score_set_ops[i],{score_set_ph[i]:-1000})
                             rand_idx=np.arange(FLAGS.worker_hosts_num-1)
                             np.random.shuffle(rand_idx)

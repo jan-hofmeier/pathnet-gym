@@ -78,16 +78,13 @@ class GameACPathNetNetwork(GameACNetwork):
             self.b_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
             kernel_num=np.array(FLAGS.kernel_num.split(","),dtype=int);
             stride_size=np.array(FLAGS.stride_size.split(","),dtype=int);
-            feature_num=[8,8,8];
+            feature_num=[3,8,8,8]
             # last_lin_num=392;
             # last_lin_num=1280
             last_lin_num = 1408
             for i in range(FLAGS.L-1):
                 for j in range(FLAGS.M):
-                    if(i==0):
-                        self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],1,feature_num[i]]);
-                    else:
-                        self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],feature_num[i-1],feature_num[i]]);
+                    self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],feature_num[i],feature_num[i+1]]);
 
             # Last Layer in PathNet
             self.W_lin=np.zeros(FLAGS.M,dtype=object);
@@ -113,20 +110,22 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
             # state (input)
-            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 1])
+            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 3])
 
-            for i in range(FLAGS.L):
-                layer_modules_list=np.zeros(FLAGS.M,dtype=object);
-                if(i==FLAGS.L-1):
-                    net=tf.reshape(net,[-1,last_lin_num]);
+            net = tf.check_numerics(self.s, "NaN input")
+            layer_modules_list = np.zeros(FLAGS.M, dtype=object)
+            # conv layers
+            for i in range(FLAGS.L-1):
                 for j in range(FLAGS.M):
-                    if(i==0):
-                        layer_modules_list[j]=tf.nn.relu(self._conv2d(self.s,self.W_conv[i,j],stride_size[i])+self.b_conv[i,j])*self.geopath_set[self.task_index][i,j];
-                    elif(i==FLAGS.L-1):
-                        layer_modules_list[j]=tf.nn.relu(tf.matmul(net,self.W_lin[j])+self.b_lin[j])*self.geopath_set[self.task_index][i,j];
-                    else:
-                        layer_modules_list[j]=tf.nn.relu(self._conv2d(net,self.W_conv[i,j],stride_size[i])+self.b_conv[i,j])*self.geopath_set[self.task_index][i,j];
-                net=np.sum(layer_modules_list);
+                    layer_modules_list[j]=tf.nn.relu(self._conv2d(net,self.W_conv[i,j],stride_size[i])+self.b_conv[i,j])*self.geopath_set[self.task_index][i,j]
+                net=np.sum(layer_modules_list)
+
+            # lin layer
+            net = tf.reshape(net, [-1, last_lin_num])
+            for j in range(FLAGS.M):
+                layer_modules_list[j] = tf.nn.relu(tf.matmul(net, self.W_lin[j]) + self.b_lin[j]) * self.geopath_set[self.task_index][FLAGS.L-1, j]
+            net = np.sum(layer_modules_list)
+
             net=net/FLAGS.M;
             self.net=net
             # policy (output)
@@ -157,7 +156,7 @@ class GameACPathNetNetwork(GameACNetwork):
                 self.pds += [pd]
 
                 ac = pd.sample()  # XXX
-                self._acts += [U.function([stochastic, self.s], [ac, self.vpred])]
+                self._acts += [U.function([stochastic, self.s], [ac, self.vpred, logits])]
                 env.close()
             # set_fixed_path
             self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
@@ -170,9 +169,12 @@ class GameACPathNetNetwork(GameACNetwork):
         self._act=self._acts[stage]
 
 
-
+    printLogits = 0
     def act(self, stochastic, ob):
-        ac1, vpred1 =  self._act(stochastic, ob[None])
+        ac1, vpred1, logits =  self._act(stochastic, ob[None])
+        if self.printLogits%10 == 0:
+            print("logits: " + str(logits))
+        self.printLogits+=1
         return ac1[0], vpred1[0]
 
     def get_geopath(self,sess):
