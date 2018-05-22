@@ -39,14 +39,16 @@ class A3CTrainingThread(object):
                  global_network,
                  training_stage,
                  initial_learning_rate,
-                 save_model_with_prefix=False,
-                 restore_model_from_file=False,
                  learning_rate_input,
                  grad_applier,
                  max_global_time_step,
                  device,
                  FLAGS="",
-                 task_index=""):
+                 task_index="",
+
+    ):
+        self.save_model_with_prefix = FLAGS.save_dir
+        self.restore_model_from_file = FLAGS.restore_dir
 
         clip_param = 0.2
         entcoeff = 0.01

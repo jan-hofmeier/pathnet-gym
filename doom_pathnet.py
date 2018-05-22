@@ -110,7 +110,7 @@ def train():
         #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
         #env.close()
 
-        training_thread = A3CTrainingThread(0, "", 0, initial_learning_rate, "Hi", False, learning_rate_input, grad_applier,
+        training_thread = A3CTrainingThread(0, "", 0, initial_learning_rate, learning_rate_input, grad_applier,
                                             MAX_TIME_STEP, device=device, FLAGS=FLAGS, task_index=FLAGS.task_index)
 
         # prepare session
@@ -344,6 +344,13 @@ if __name__ == '__main__':
             default=0,
             help="Index of task within the job"
     )
+
+    parser.add_argument('--restore_dir', type=str, default=False,
+                                            help='Restores Weights')
+
+    parser.add_argument('--save_dir', type=str, default=False,
+                                            help='Saves Weights')
+
     parser.add_argument('--log_dir', type=str, default='./data/tensorboard/',
                                             help='Summaries log directry')
     parser.add_argument('--monitor_dir', type=str, default='/tmp/pathnet/atari/experiment-2',
