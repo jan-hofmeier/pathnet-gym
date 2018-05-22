@@ -108,7 +108,7 @@ class A3CTrainingThread(object):
             checked_logp = checkNumeric(self.pi.pd.logp(ac))
             checked_logp_old = checkNumeric(self.oldpi.pd.logp(ac))
 
-            ratio = tf.exp( checked_logp- checked_logp_old)  # pnew / pold
+            ratio = tf.exp(tf.clip_by_value(checked_logp- checked_logp_old ,-10,10))  # pnew / pold
             ratio = checkNumeric(ratio)
 
             surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
