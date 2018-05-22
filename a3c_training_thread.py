@@ -39,6 +39,8 @@ class A3CTrainingThread(object):
                  global_network,
                  training_stage,
                  initial_learning_rate,
+                 save_model_with_prefix=False,
+                 restore_model_from_file=False,
                  learning_rate_input,
                  grad_applier,
                  max_global_time_step,
@@ -200,6 +202,12 @@ class A3CTrainingThread(object):
 
     def process(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
 
+        # Resume model if a model file is provided
+        if self.restore_model_from_file:
+            saver=tf.train.Saver()
+            saver.restore(tf.get_default_session(), self.restore_model_from_file)
+            logger.log("Loaded model from {}".format(self.restore_model_from_file))
+
         max_timesteps=int(LOCAL_T_MAX * 1.1)
         timesteps_per_actorbatch=256
         optim_epochs=4
@@ -313,6 +321,16 @@ class A3CTrainingThread(object):
             logger.record_tabular("EpisodesSoFar", episodes_so_far)
             logger.record_tabular("TimestepsSoFar", timesteps_so_far)
             logger.record_tabular("TimeElapsed", time.time() - tstart)
+
+            # Save model after every 500 iters if a file name to save is given
+            import os
+            if iters_so_far % 500 ==0:
+                if self.save_model_with_prefix:
+                    basePath=os.path.dirname(os.path.abspath(__file__))
+                    modelF= basePath + '/' + self.save_model_with_prefix+"_afterIter_"+str(iters_so_far)+".model"
+                    U.save_state(modelF)
+                    logger.log("Saved model to file :{}".format(modelF))
+
             if MPI.COMM_WORLD.Get_rank() == 0:
                 logger.dump_tabular()
 
