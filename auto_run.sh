@@ -12,5 +12,5 @@ done
 mkdir data
 for i in `eval echo {0..$worker_num}`
 do
-  python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B > >(tee -a data/worker"$worker_num".out) 2> >(tee -a data/worker"$worker_num".err >&2) &
+  python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B > >(tee -a data/worker"$i".out) 2> >(tee -a data/worker"$i".err >&2) &
 done
