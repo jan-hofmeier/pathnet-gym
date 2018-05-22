@@ -264,7 +264,7 @@ def flattenallbut0(x):
 
 
 # ================================================================
-# Diagnostics 
+# Diagnostics
 # ================================================================
 
 def display_var_info(vars):
@@ -278,3 +278,20 @@ def display_var_info(vars):
         logger.info("    %s%s%s" % (name, " "*(55-len(name)), str(v.shape)))
     logger.info("Total model parameters: %0.1f million" % (count_params*1e-6))
 
+# ================================================================
+# Saving variables
+# ================================================================
+
+def get_session():
+    """Returns recently made Tensorflow session"""
+    return tf.get_default_session()
+
+def load_state(fname):
+    saver = tf.train.Saver()
+    saver.restore(get_session(), fname)
+
+
+def save_state(fname):
+    os.makedirs(os.path.dirname(fname), exist_ok=True)
+    saver = tf.train.Saver()
+    saver.save(get_session(), fname)

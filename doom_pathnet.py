@@ -110,7 +110,8 @@ def train():
         #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
         #env.close()
 
-        training_thread = A3CTrainingThread(0,"",0,initial_learning_rate,learning_rate_input,grad_applier,MAX_TIME_STEP,device=device,FLAGS=FLAGS,task_index=FLAGS.task_index)
+        training_thread = A3CTrainingThread(0, "", 0, initial_learning_rate, "Hi", False, learning_rate_input, grad_applier,
+                                            MAX_TIME_STEP, device=device, FLAGS=FLAGS, task_index=FLAGS.task_index)
 
         # prepare session
         with tf.device(device):
