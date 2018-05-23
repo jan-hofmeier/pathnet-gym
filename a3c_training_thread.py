@@ -125,6 +125,8 @@ class A3CTrainingThread(object):
 
             losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
 
+            tf.summary.scalar('total_loss', total_loss)
+
             grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
             grads = checkNumeric(grads)
             lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
@@ -202,16 +204,16 @@ class A3CTrainingThread(object):
 
     def process(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
 
-        max_timesteps=int(LOCAL_T_MAX * 1.1)
+        max_timesteps=0 #int(LOCAL_T_MAX * 1.1)
         timesteps_per_actorbatch=256
         optim_epochs=4
         optim_stepsize=1e-3
         optim_batchsize=64
         gamma=0.99
         lam=0.95
-        schedule='linear'
+        schedule='constant'
         max_iters = 0
-        max_episodes = 0
+        max_episodes = 10
         max_seconds = 0
 
         start_local_t = self.local_t
@@ -239,6 +241,7 @@ class A3CTrainingThread(object):
         assert sum([max_iters > 0, max_timesteps > 0, max_episodes > 0,
                     max_seconds > 0]) == 1, "Only one time constraint permitted"
 
+        totalreward = 0
         while True:
             if max_timesteps and timesteps_so_far >= max_timesteps:
                 break
@@ -260,12 +263,7 @@ class A3CTrainingThread(object):
 
             seg = seg_gen.__next__()
 
-
-            for new, rew in zip(seg["new"], seg["rew"]):
-                if new:
-                    sess.run(score_ops, {score_ph: rew})
-                    sess.run(score_set_ops, {score_set_ph: rew})
-
+            totalreward += np.sum(seg["rew"])
 
 
             add_vtarg_and_adv(seg, gamma, lam)
@@ -321,6 +319,8 @@ class A3CTrainingThread(object):
 
         diff_local_t = self.local_t - start_local_t
         print("finish process")
+        sess.run(score_ops, {score_ph: totalreward})
+        sess.run(score_set_ops, {score_set_ph: totalreward})
         return diff_local_t;
 
 

@@ -158,16 +158,19 @@ def train():
             saver = tf.train.Saver();
 
             # Resume model if a model file is provided
-            if FLAGS.restore_dir:
-                saver.restore(tf.get_default_session(), FLAGS.restore_dir)
-                print("Loaded model from {}".format(FLAGS.restore_dir))
+            #if FLAGS.restore_dir:
+            #    saver.restore(tf.get_default_session(), FLAGS.restore_dir)
+            #    print("Loaded model from {}".format(FLAGS.restore_dir))
 
-        sv = tf.train.Supervisor(is_chief=(FLAGS.task_index == 0),
+        sv = tf.train.Supervisor(is_chief=(FLAGS.task_index == FLAGS.worker_hosts_num-1),
                                  global_step=global_step,
                                  logdir=FLAGS.log_dir,
                                  summary_op=summary_op,
                                  saver=saver,
                                  init_op=init_op)
+
+        print("created Superviser")
+
         try:
             os.mkdir("./data/graphs")
         except:
