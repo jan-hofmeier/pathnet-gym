@@ -145,7 +145,7 @@ class A3CTrainingThread(object):
 
                 activeMinimizer = lambda : [ op for i, op in zip(self.pi.get_geopath_vars_idx(tf.get_default_session), minimize_ops) if i]
 
-                lossandminimize = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + activeMinimizer)
+                lossandminimize = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + activeMinimizer())
 
                 assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
                                                                 for (oldv, newv) in
