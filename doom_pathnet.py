@@ -109,6 +109,9 @@ def train():
         #wrapper = ToDiscrete('constant-7')
         #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
         #env.close()
+        training_thread = A3CTrainingThread(FLAGS.task_index, initial_learning_rate, learning_rate_input,
+                                            grad_applier,
+                                            MAX_TIME_STEP, device=device, FLAGS=FLAGS)
 
         # prepare session
         with tf.device(device):
@@ -138,9 +141,6 @@ def train():
                     fixed_path_tf[i,j]=tf.get_variable('fixed_path'+str(i)+"-"+str(j),[],initializer=tf.constant_initializer(0),trainable=False);
                     fixed_path_ph[i,j]=tf.placeholder(fixed_path_tf[i,j].dtype,shape=fixed_path_tf[i,j].get_shape());
                     fixed_path_ops[i,j]=fixed_path_tf[i,j].assign(fixed_path_ph[i,j]);
-
-            training_thread = A3CTrainingThread(FLAGS.task_index, "", 0, initial_learning_rate, learning_rate_input, grad_applier,
-                                                MAX_TIME_STEP, device=device, FLAGS=FLAGS, task_index=FLAGS.task_index)
 
             # parameters on PathNet
             vars_=training_thread.pi.get_vars_to_initilize()
