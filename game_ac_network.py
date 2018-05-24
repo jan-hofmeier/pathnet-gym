@@ -109,7 +109,7 @@ class GameACPathNetNetwork(GameACNetwork):
             # state (input)
             self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 3])
 
-            net = tf.check_numerics(self.s, "NaN input")
+            net = self.s #tf.check_numerics(self.s, "NaN input")
             layer_modules_list = np.zeros(FLAGS.M, dtype=object)
             # conv layers
             for i in range(FLAGS.L-1):
