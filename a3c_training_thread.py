@@ -196,7 +196,7 @@ class A3CTrainingThread(object):
         if training_stage == 1:
             self.game_state.close_env()
 
-        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss, self.lossandminimize, self.compute_losses, self.assign_old_eq_new, self.adam)=self.stage_dependend[training_stage]
+        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss, self.lossandminimize, self.compute_losses, self.assign_old_eq_new)=self.stage_dependend[training_stage]
 
     def _anneal_learning_rate(self, global_time_step):
         learning_rate = self.initial_learning_rate * (self.max_global_time_step - global_time_step) / self.max_global_time_step
