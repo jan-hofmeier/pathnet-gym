@@ -31,16 +31,13 @@ PERFORMANCE_LOG_INTERVAL = 1000
 
 class A3CTrainingThread(object):
     def __init__(self,
-                 thread_index,
-                 global_network,
-                 training_stage,
+                 task_index,
                  initial_learning_rate,
                  learning_rate_input,
                  grad_applier,
                  max_global_time_step,
                  device,
-                 FLAGS="",
-                 task_index="",
+                 FLAGS=""
 
     ):
 
@@ -48,115 +45,115 @@ class A3CTrainingThread(object):
         entcoeff = 0.01
         adam_epsilon = 1e-5
 
-        # score for tensorboard
-        scoreep = tf.get_variable('score_episod' + str(thread_index), [], initializer=tf.constant_initializer(-21), trainable=False)
-        score = tf.get_variable('score', [], initializer=tf.constant_initializer(-21),
-                                trainable=False)
-        score_ph = tf.placeholder(score.dtype, shape=score.get_shape())
-        score_ops = score.assign(score_ph)
-        score_ep_ops = scoreep.assign(score_ph)
+        self.pi = GameACPathNetNetwork("pi", task_index, device, FLAGS)
+        self.oldpi = GameACPathNetNetwork("oldpi", task_index, device, FLAGS, self.pi.geopath_set)
 
-        self.set_score = lambda s,sess: sess.run([score_ops, score_ep_ops], {score_ph: s})
-        tf.summary.scalar("score_per_episode" + str(thread_index), scoreep)
-        tf.summary.scalar("score", score)
+        with tf.device(device):
+            # score for tensorboard
+            score = tf.get_variable('score', [], initializer=tf.constant_initializer(-21),
+                                    trainable=False)
+            score_ph = tf.placeholder(score.dtype, shape=score.get_shape())
+            score_ops = score.assign(score_ph)
 
-        print("Initializing worker #{}".format(task_index))
-        self.training_stage = training_stage
-        self.thread_index = thread_index
-        self.task_index = task_index
-        self.learning_rate_input = learning_rate_input
-        self.max_global_time_step = max_global_time_step
+            self.set_score = lambda s,sess: sess.run([score_ops], {score_ph: s})
+            #tf.summary.scalar("score_per_episode" + str(thread_index), scoreep)
+            tf.summary.scalar("score", score)
 
-        self.pi = GameACPathNetNetwork("pi", thread_index, device,FLAGS)
-        self.oldpi = GameACPathNetNetwork("oldpi", thread_index, device, FLAGS, self.pi.geopath_set)
-
-        self.local_t = 0
+            print("Initializing worker #{}".format(task_index))
+            #self.training_stage = training_stage
+            self.task_index = task_index
+            self.learning_rate_input = learning_rate_input
+            self.max_global_time_step = max_global_time_step
 
 
-        # Setup losses and stuff
-        # ----------------------------------------
-
-        checkNumeric = lambda x: tf.check_numerics(x,'WARUM???')
-
-        self.atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
-        #self.atarg = checkNumeric(self.atarg)
-
-        self.ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
-        #self.ret = checkNumeric(self.ret)
-
-        self.lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
-                                shape=[])  # learning rate multiplier, updated with schedule
-        #self.lrmult = checkNumeric(self.lrmult)
-        clip_param = clip_param * self.lrmult  # Annealed cliping parameter epislon
-        clip_param = checkNumeric(clip_param)
-
-        self.ob = U.get_placeholder_cached(name="ob")
-        #self.ob = checkNumeric(self.ob)
-
-        self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
-        self.vf_loss = checkNumeric(self.vf_loss)
-
-        self.stage_dependend = []
-
-        for i, _ in enumerate(ROMZ):
-            self.pi.set_training_stage(i)
-            self.oldpi.set_training_stage(i)
-            ac = self.pi.pdtype.sample_placeholder([None])
-
-            kloldnew = self.oldpi.pd.kl(self.pi.pd)
-            kloldnew = checkNumeric(kloldnew)
-
-            ent = self.pi.pd.entropy()
-            ent = checkNumeric(ent)
-
-            meankl = tf.reduce_mean(kloldnew)
-            meanent = tf.reduce_mean(ent)
-
-            pol_entpen = (-entcoeff) * meanent
-            pol_entpen = checkNumeric(pol_entpen)
-
-            checked_logp = checkNumeric(self.pi.pd.logp(ac))
-            checked_logp_old = checkNumeric(self.oldpi.pd.logp(ac))
-
-            ratio = tf.exp(tf.clip_by_value(checked_logp- checked_logp_old ,-10,10))  # pnew / pold
-            ratio = checkNumeric(ratio)
-
-            surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
-            surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * self.atarg  #
-            surr2 = checkNumeric(surr2)
-
-            pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
-            pol_surr = checkNumeric(pol_surr)
-
-            total_loss = pol_surr + pol_entpen + self.vf_loss
-            total_loss = checkNumeric(total_loss)
-
-            losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
-
-            #tf.summary.scalar('total_loss', total_loss)
-
-            optimizer = tf.AdamOptimizer()
+            self.local_t = 0
 
 
-            grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
-            grads = checkNumeric(grads)
-            lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
+            # Setup losses and stuff
+            # ----------------------------------------
 
-            compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
+            checkNumeric = lambda x: tf.check_numerics(x,'WARUM???')
 
-            #checked_vars = list(map(checkNumeric,))
-            adam = MpiAdam(self.pi.get_trainable_variables(), epsilon=adam_epsilon)
+            self.atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
+            #self.atarg = checkNumeric(self.atarg)
 
-            assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
-                                                            for (oldv, newv) in
-                                                            zipsame(self.oldpi.get_trainable_variables(), self.pi.get_trainable_variables())])
+            self.ret = tf.placeholder(dtype=tf.float32, shape=[None])  # Empirical return
+            #self.ret = checkNumeric(self.ret)
 
-            stage_dep=[(ac, meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new,
-              adam)]
+            self.lrmult = tf.placeholder(name='lrmult', dtype=tf.float32,
+                                    shape=[])  # learning rate multiplier, updated with schedule
+            #self.lrmult = checkNumeric(self.lrmult)
+            clip_param = clip_param * self.lrmult  # Annealed cliping parameter epislon
+            clip_param = checkNumeric(clip_param)
+
+            self.ob = U.get_placeholder_cached(name="ob")
+            #self.ob = checkNumeric(self.ob)
+
+            self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
+            self.vf_loss = checkNumeric(self.vf_loss)
+
+            self.stage_dependend = []
+
+            for i, _ in enumerate(ROMZ):
+                self.pi.set_training_stage(i)
+                self.oldpi.set_training_stage(i)
+                ac = self.pi.pdtype.sample_placeholder([None])
+
+                kloldnew = self.oldpi.pd.kl(self.pi.pd)
+                kloldnew = checkNumeric(kloldnew)
+
+                ent = self.pi.pd.entropy()
+                ent = checkNumeric(ent)
+
+                meankl = tf.reduce_mean(kloldnew)
+                meanent = tf.reduce_mean(ent)
+
+                pol_entpen = (-entcoeff) * meanent
+                pol_entpen = checkNumeric(pol_entpen)
+
+                checked_logp = checkNumeric(self.pi.pd.logp(ac))
+                checked_logp_old = checkNumeric(self.oldpi.pd.logp(ac))
+
+                ratio = tf.exp(tf.clip_by_value(checked_logp- checked_logp_old ,-10,10))  # pnew / pold
+                ratio = checkNumeric(ratio)
+
+                surr1 = ratio * self.atarg  # surrogate from conservative policy iteration
+                surr2 = tf.clip_by_value(ratio, 1.0 - clip_param, 1.0 + clip_param) * self.atarg  #
+                surr2 = checkNumeric(surr2)
+
+                pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
+                pol_surr = checkNumeric(pol_surr)
+
+                total_loss = pol_surr + pol_entpen + self.vf_loss
+                total_loss = checkNumeric(total_loss)
+
+                losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
+
+                #tf.summary.scalar('total_loss', total_loss)
+
+    
+                optimizer = tf.AdamOptimizer()
+
+
+                grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
+                grads = checkNumeric(grads)
+                lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
+
+                compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
+
+                #checked_vars = list(map(checkNumeric,))
+                adam = MpiAdam(self.pi.get_trainable_variables(), epsilon=adam_epsilon)
+
+                assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
+                                                                for (oldv, newv) in
+                                                                zipsame(self.oldpi.get_trainable_variables(), self.pi.get_trainable_variables())])
+
+                stage_dep=[(ac, meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new,
+                  adam)]
 
 
 
-            self.stage_dependend+=stage_dep
+                self.stage_dependend+=stage_dep
 
         return
 
@@ -224,7 +221,7 @@ class A3CTrainingThread(object):
         lam=0.95
         schedule='constant'
         max_iters = 0
-        max_episodes = 10
+        max_episodes = 5
         max_seconds = 0
 
         start_local_t = self.local_t

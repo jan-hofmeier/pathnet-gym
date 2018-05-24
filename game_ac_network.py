@@ -14,10 +14,8 @@ import gym
 class GameACNetwork(object):
     recurrent = False
     def __init__(self,
-                 thread_index, # -1 for global
                  device="/cpu:0"):
         #self._action_size = ACTION_SIZEZ[self.training_stage]
-        self._thread_index = thread_index
         self._device = device
 
     def sync_from(self, src_netowrk, name=None):
@@ -67,12 +65,11 @@ class GameACPathNetNetwork(GameACNetwork):
                  device="/cpu:0",
                  FLAGS="", geopath_set = None):
         GameACNetwork.__init__(self,
-                               thread_index,
                                device)
         self.geopath_set = geopath_set
-        self.task_index=FLAGS.task_index;
-        scope_name = name +"net_" + str(self._thread_index)
-        with tf.device(self._device), tf.variable_scope(scope_name) as scope:
+        self.task_index=FLAGS.task_index #thread_index
+        #scope_name = name +"net_" + str(self._thread_index)
+        with tf.device(self._device), tf.variable_scope(name+"GameACPathNetNetwork"):
             # First three Layers
             self.W_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
             self.b_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
