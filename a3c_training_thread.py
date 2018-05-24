@@ -202,13 +202,6 @@ class A3CTrainingThread(object):
     def choose_action(self, pi_values):
         return np.random.choice(range(len(pi_values)), p=pi_values)
 
-    def _record_score(self, sess, summary_writer, summary_op, score_input, score, global_t):
-        summary_str = sess.run(summary_op, feed_dict={
-            score_input: score,
-        })
-        summary_writer.add_summary(summary_str, global_t)
-        summary_writer.flush()
-
     def set_start_time(self, start_time):
         self.start_time = start_time
 
