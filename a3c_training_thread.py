@@ -143,7 +143,7 @@ class A3CTrainingThread(object):
 
                 compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
 
-                activeMinimizer = lambda : [ op for i, op in zip(self.pi.get_vars_idx(), minimize_ops) if i]
+                activeMinimizer = lambda : [ op for i, op in zip(self.pi.get_geopath_vars_idx(tf.get_default_session), minimize_ops) if i]
 
                 lossandminimize = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + activeMinimizer)
 

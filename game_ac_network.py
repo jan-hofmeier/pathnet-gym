@@ -165,7 +165,7 @@ class GameACPathNetNetwork(GameACNetwork):
         self.stage=stage
         self.pdtype = self.pdtypes[stage]
         self.vpred = self.vpreds[stage]
-        #self.W_fc2, self.b_fc2, self.W_fc3, self.b_fc3 = self.pWeights[stage]
+        self.W_fc2, self.b_fc2, self.W_fc3, self.b_fc3 = self.pWeights[stage]
         self.pd = self.pds[stage]
         self._act=self._acts[stage]
 
@@ -201,13 +201,30 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
     def get_trainable_variables(self):
-        return self.get_pathnet_vars() + [v for vl in self.pWeights for v in vl ] #[self.W_fc2,self.b_fc2 ,self.W_fc3, self.b_fc3]
+        return self.get_pathnet_vars() + [self.W_fc2,self.b_fc2 ,self.W_fc3, self.b_fc3] # [v for vl in self.pWeights for v in vl ] #
 
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
 
     def get_vars_idx(self):
-        return self.get_unfixed_pathnet_vars_idx()+ [(i==self.stage)*1 for i, vl in enumerate(self.pWeights)  for v in vl] # [1, 1, 1, 1]
+        return self.get_unfixed_pathnet_vars_idx()+ [1,1,1,1] #[(i==self.stage)*1 for i, vl in enumerate(self.pWeights)  for v in vl] # [1, 1, 1, 1]
+
+    def get_geopath_vars_idx(self, sess):
+        path = self.get_geopath(sess)
+        res=[];
+        for i in range(len(self.W_conv)):
+            for j in range(len(self.W_conv[0])):
+                if((self.fixed_path[i,j]==0.0) and (path[i,j]!=0.0)):
+                    res+=[1,1];
+                else:
+                    res+=[0,0];
+        for i in range(len(self.W_lin)):
+            if(self.fixed_path[-1,i]==0.0 and path[-1,i]!=0.0):
+                res+=[1,1];
+            else:
+                res+=[0,0];
+        return res + [1,1,1,1]
+
 
     def get_unfixed_pathnet_vars_idx(self):
         res=[];
