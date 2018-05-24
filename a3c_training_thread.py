@@ -11,9 +11,6 @@ from baselines.common import Dataset, explained_variance, fmt_row, zipsame
 from baselines import logger
 import baselines.common.tf_util as U
 import time
-from baselines.common.mpi_adam import MpiAdam
-from baselines.common.mpi_moments import mpi_moments
-from mpi4py import MPI
 from collections import deque
 
 from game_state import GameState
@@ -137,6 +134,9 @@ class A3CTrainingThread(object):
             losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
 
             #tf.summary.scalar('total_loss', total_loss)
+
+            optimizer = tf.AdamOptimizer()
+
 
             grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
             grads = checkNumeric(grads)

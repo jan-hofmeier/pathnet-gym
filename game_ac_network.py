@@ -136,35 +136,38 @@ class GameACPathNetNetwork(GameACNetwork):
             #v_ = tf.matmul(net, self.W_fc3) + self.b_fc3
             #self.v = tf.reshape( v_, [-1] )
 
-            # weight for value output layer
-            self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
-            self.vpred = tf.reshape(tf.matmul(self.net, self.W_fc3) + self.b_fc3, [-1])
 
             self.pdtypes = []
             self.pWeights = []
             self.pds = []
             self._acts = []
+            self.vpreds = []
             stochastic = tf.placeholder(dtype=tf.bool, shape=())
             for rom in ROMZ:
                 env = gym.make(rom)
                 pdtype=make_pdtype(env.action_space);
                 self.pdtypes += [pdtype]
                 W_fc2, b_fc2 = self._fc_variable([256, pdtype.param_shape()[0]])
-                self.pWeights+=[(W_fc2, b_fc2)]
+                # weight for value output layer
+                W_fc3, b_fc3 = self._fc_variable([256, 1])
+                vpred = [tf.reshape(tf.matmul(self.net, W_fc3) + b_fc3, [-1])]
+                self.vpreds += vpred
+                self.pWeights+=[(W_fc2, b_fc2,W_fc3, b_fc3)]
                 logits = tf.matmul(self.net, W_fc2) + b_fc2
                 pd = pdtype.pdfromflat(logits)
                 self.pds += [pd]
 
                 ac = pd.sample()  # XXX
-                self._acts += [U.function([stochastic, self.s], [ac, self.vpred, logits])]
+                self._acts += [U.function([stochastic, self.s], [ac, vpred, logits])]
                 env.close()
+
             # set_fixed_path
             self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
 
     def set_training_stage(self, stage):
         self.pdtype = self.pdtypes[stage]
-
-        self.W_fc2, self.b_fc2 = self.pWeights[stage]
+        self.vpred = self.vpreds[stage]
+        self.W_fc2, self.b_fc2, self.W_fc3, self.b_fc3 = self.pWeights[stage]
         self.pd = self.pds[stage]
         self._act=self._acts[stage]
 
@@ -187,7 +190,7 @@ class GameACPathNetNetwork(GameACNetwork):
     def set_fixed_path(self,fixed_path):
         self.fixed_path=fixed_path;
 
-    def get_vars_to_initilize(self):
+    def get_pathnet_vars(self):
         res=[];
         for i in range(len(self.W_conv)):
             for j in range(len(self.W_conv[0])):
@@ -200,12 +203,12 @@ class GameACPathNetNetwork(GameACNetwork):
             # res+=[self.W_fc2_source]+[self.b_fc2_source];
             # res+=[self.W_fc3]+[self.b_fc3];
         #res+=[self.W_fc2]+[self.b_fc2];
-        res+=[self.W_fc3]+[self.b_fc3];
+        #res+=[self.W_fc3]+[self.b_fc3];
         return res;
 
 
     def get_trainable_variables(self):
-        return self.get_vars_to_initilize() + [self.W_fc2]+[self.b_fc2]
+        return self.get_pathnet_vars() + [self.W_fc2,self.b_fc2 ,self.W_fc3, self.b_fc3]
 
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
