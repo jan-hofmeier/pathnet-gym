@@ -134,8 +134,13 @@ class A3CTrainingThread(object):
 
                 grad_applier = tf.train.AdamOptimizer(epsilon=adam_epsilon)
                 minimize_ops = []
-                for var in self.pi.get_trainable_variables():
-                    minimize_ops += [grad_applier.minimize(total_loss, var_list=var)]
+
+                print("Thread {}: generate gradients".format(task_index))
+                grads = grad_applier.compute_gradients(total_loss, self.pi.get_trainable_variables())
+                for i,grad in enumerate(grads):
+                    print("Thread {}: generate minimize op {} of {}".format(task_index,i , len(grads)))
+                    minimize_ops += [grad_applier.apply_gradients(grad)]
+                    print("Thread {}: finished generating gradients".format(task_index))
 
                 #grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
                 #grads = checkNumeric(grads)
