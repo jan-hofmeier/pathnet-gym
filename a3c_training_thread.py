@@ -38,9 +38,8 @@ class A3CTrainingThread(object):
                  max_global_time_step,
                  device,
                  FLAGS=""
-
     ):
-
+        self.task_index = task_index
         clip_param = 0.2
         entcoeff = 0.01
         adam_epsilon = 1e-5
@@ -94,6 +93,8 @@ class A3CTrainingThread(object):
 
             self.stage_dependend = []
 
+
+
             for i, _ in enumerate(ROMZ):
                 self.pi.set_training_stage(i)
                 self.oldpi.set_training_stage(i)
@@ -131,25 +132,26 @@ class A3CTrainingThread(object):
 
                 #tf.summary.scalar('total_loss', total_loss)
 
-    
-                optimizer = tf.AdamOptimizer()
+                grad_applier = tf.train.AdamOptimizer(epsilon=adam_epsilon)
+                minimize_ops = []
+                for var in self.pi.get_trainable_variables():
+                    minimize_ops += [grad_applier.minimize(total_loss, var_list=var)]
 
-
-                grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
-                grads = checkNumeric(grads)
-                lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
+                #grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
+                #grads = checkNumeric(grads)
+                #lossandgrad = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + [grads])
 
                 compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
 
-                #checked_vars = list(map(checkNumeric,))
-                adam = MpiAdam(self.pi.get_trainable_variables(), epsilon=adam_epsilon)
+                activeMinimizer = lambda : [ op for i, op in zip(self.pi.get_vars_idx(), minimize_ops) if i]
+
+                lossandminimize = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + activeMinimizer)
 
                 assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
                                                                 for (oldv, newv) in
                                                                 zipsame(self.oldpi.get_trainable_variables(), self.pi.get_trainable_variables())])
 
-                stage_dep=[(ac, meankl, meanent, pol_entpen, pol_surr, total_loss, lossandgrad, compute_losses, assign_old_eq_new,
-                  adam)]
+                stage_dep=[(ac, meankl, meanent, pol_entpen, pol_surr, total_loss, lossandminimize, compute_losses, assign_old_eq_new)]
 
 
 
@@ -189,7 +191,7 @@ class A3CTrainingThread(object):
         if training_stage == 1:
             self.game_state.close_env()
 
-        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss, self.lossandgrad, self.compute_losses, self.assign_old_eq_new, self.adam)=self.stage_dependend[training_stage]
+        (self.ac, self.meankl, self.meanent, self.pol_entpen, self.pol_surr, self.total_loss, self.lossandminimize, self.compute_losses, self.assign_old_eq_new, self.adam)=self.stage_dependend[training_stage]
 
     def _anneal_learning_rate(self, global_time_step):
         learning_rate = self.initial_learning_rate * (self.max_global_time_step - global_time_step) / self.max_global_time_step
@@ -292,8 +294,9 @@ class A3CTrainingThread(object):
             for _ in range(optim_epochs):
                 losses = []  # list of tuples, each of which gives the loss for a minibatch
                 for batch in d.iterate_once(optim_batchsize):
-                    *newlosses, g = self.lossandgrad(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
-                    self.adam.update(g, optim_stepsize * cur_lrmult)
+                    newlosses = self.lossandminimize(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
+                    del newlosses[len(loss_names):]
+                    #self.adam.update(g, optim_stepsize * cur_lrmult)
                     losses.append(newlosses)
                 logger.log(fmt_row(13, np.mean(losses, axis=0)))
 
@@ -302,6 +305,7 @@ class A3CTrainingThread(object):
             for batch in d.iterate_once(optim_batchsize):
                 newlosses = self.compute_losses(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
                 losses.append(newlosses)
+            '''
             meanlosses, _, _ = mpi_moments(losses, axis=0)
             logger.log(fmt_row(13, meanlosses))
             for (lossval, name) in zipsame(meanlosses, loss_names):
@@ -324,6 +328,12 @@ class A3CTrainingThread(object):
 
             if MPI.COMM_WORLD.Get_rank() == 0:
                 logger.dump_tabular()
+            '''
+            iters_so_far += 1
+            episodes_so_far += sum(seg["new"])
+            timesteps_so_far += len(seg["new"])
+
+            print("Episodes so far {} for worker {}".format(episodes_so_far,self.task_index ))
 
         diff_local_t = self.local_t - start_local_t
         print("finish process")

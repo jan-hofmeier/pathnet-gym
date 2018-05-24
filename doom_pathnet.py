@@ -94,12 +94,9 @@ def train():
 
         learning_rate_input = tf.placeholder("float")
 
-        grad_applier = RMSPropApplier(learning_rate = learning_rate_input,
-                                                                    decay = RMSP_ALPHA,
-                                                                    momentum = 0.0,
-                                                                    epsilon = RMSP_EPSILON,
-                                                                    clip_norm = GRAD_NORM_CLIP,
-                                                                    device = device)
+
+
+
 
         tf.set_random_seed(1);
         #There are no global network
@@ -109,9 +106,7 @@ def train():
         #wrapper = ToDiscrete('constant-7')
         #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
         #env.close()
-        training_thread = A3CTrainingThread(FLAGS.task_index, initial_learning_rate, learning_rate_input,
-                                            grad_applier,
-                                            MAX_TIME_STEP, device=device, FLAGS=FLAGS)
+
 
         # prepare session
         with tf.device(device):
@@ -142,8 +137,13 @@ def train():
                     fixed_path_ph[i,j]=tf.placeholder(fixed_path_tf[i,j].dtype,shape=fixed_path_tf[i,j].get_shape());
                     fixed_path_ops[i,j]=fixed_path_tf[i,j].assign(fixed_path_ph[i,j]);
 
+
+            training_thread = A3CTrainingThread(FLAGS.task_index, initial_learning_rate, learning_rate_input,
+                                                None,
+                                                MAX_TIME_STEP, device=device, FLAGS=FLAGS)
+
             # parameters on PathNet
-            vars_=training_thread.pi.get_vars_to_initilize()
+            vars_=training_thread.pi.get_pathnet_vars()
             vars_ph=np.zeros(len(vars_),dtype=object);
             vars_ops=np.zeros(len(vars_),dtype=object);
             for i in range(len(vars_)):

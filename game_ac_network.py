@@ -69,7 +69,7 @@ class GameACPathNetNetwork(GameACNetwork):
         self.geopath_set = geopath_set
         self.task_index=FLAGS.task_index #thread_index
         #scope_name = name +"net_" + str(self._thread_index)
-        with tf.device(self._device), tf.variable_scope(name+"GameACPathNetNetwork"):
+        with tf.device(self._device), tf.variable_scope(name+"GameACPathNetNetwork") as self.scope:
             # First three Layers
             self.W_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
             self.b_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
@@ -162,9 +162,10 @@ class GameACPathNetNetwork(GameACNetwork):
             self.fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
 
     def set_training_stage(self, stage):
+        self.stage=stage
         self.pdtype = self.pdtypes[stage]
         self.vpred = self.vpreds[stage]
-        self.W_fc2, self.b_fc2, self.W_fc3, self.b_fc3 = self.pWeights[stage]
+        #self.W_fc2, self.b_fc2, self.W_fc3, self.b_fc3 = self.pWeights[stage]
         self.pd = self.pds[stage]
         self._act=self._acts[stage]
 
@@ -191,26 +192,24 @@ class GameACPathNetNetwork(GameACNetwork):
         res=[];
         for i in range(len(self.W_conv)):
             for j in range(len(self.W_conv[0])):
-                if(self.fixed_path[i,j]==0.0):
+                #if(self.fixed_path[i,j]==0.0):
                     res+=[self.W_conv[i,j]]+[self.b_conv[i,j]];
         for i in range(len(self.W_lin)):
-            if(self.fixed_path[-1,i]==0.0):
+            #if(self.fixed_path[-1,i]==0.0):
                 res+=[self.W_lin[i]]+[self.b_lin[i]];
-        # if (self.training_stage == 0):
-            # res+=[self.W_fc2_source]+[self.b_fc2_source];
-            # res+=[self.W_fc3]+[self.b_fc3];
-        #res+=[self.W_fc2]+[self.b_fc2];
-        #res+=[self.W_fc3]+[self.b_fc3];
         return res;
 
 
     def get_trainable_variables(self):
-        return self.get_pathnet_vars() + [self.W_fc2,self.b_fc2 ,self.W_fc3, self.b_fc3]
+        return self.get_pathnet_vars() + [v for vl in self.pWeights for v in vl ] #[self.W_fc2,self.b_fc2 ,self.W_fc3, self.b_fc3]
 
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
 
     def get_vars_idx(self):
+        return self.get_unfixed_pathnet_vars_idx()+ [(i==self.stage)*1 for i, vl in enumerate(self.pWeights)  for v in vl] # [1, 1, 1, 1]
+
+    def get_unfixed_pathnet_vars_idx(self):
         res=[];
         for i in range(len(self.W_conv)):
             for j in range(len(self.W_conv[0])):
@@ -223,7 +222,3 @@ class GameACPathNetNetwork(GameACNetwork):
                 res+=[1,1];
             else:
                 res+=[0,0];
-        # if (self.training_stage == 0):
-        #     res+=[1,1,1,1];
-        res += [1, 1, 1, 1];
-        return res;
