@@ -10,7 +10,6 @@ import sys
 from baselines.common import Dataset, explained_variance, fmt_row, zipsame
 from baselines import logger
 import baselines.common.tf_util as U
-import tensorflow as tf, numpy as np
 import time
 from baselines.common.mpi_adam import MpiAdam
 from baselines.common.mpi_moments import mpi_moments
@@ -51,6 +50,18 @@ class A3CTrainingThread(object):
         clip_param = 0.2
         entcoeff = 0.01
         adam_epsilon = 1e-5
+
+        # score for tensorboard
+        scoreep = tf.get_variable('score_episod' + str(thread_index), [], initializer=tf.constant_initializer(-21), trainable=False)
+        score = tf.get_variable('score', [], initializer=tf.constant_initializer(-21),
+                                trainable=False)
+        score_ph = tf.placeholder(score.dtype, shape=score.get_shape())
+        score_ops = score.assign(score_ph)
+        score_ep_ops = scoreep.assign(score_ph)
+
+        self.set_score = lambda s,sess: sess.run([score_ops, score_ep_ops], {score_ph: s})
+        tf.summary.scalar("score_per_episode" + str(thread_index), scoreep)
+        tf.summary.scalar("score", score)
 
         print("Initializing worker #{}".format(task_index))
         self.training_stage = training_stage
@@ -125,7 +136,7 @@ class A3CTrainingThread(object):
 
             losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
 
-            tf.summary.scalar('total_loss', total_loss)
+            #tf.summary.scalar('total_loss', total_loss)
 
             grads = U.flatgrad(total_loss, self.pi.get_trainable_variables())
             grads = checkNumeric(grads)
@@ -202,7 +213,7 @@ class A3CTrainingThread(object):
     def set_start_time(self, start_time):
         self.start_time = start_time
 
-    def process(self, sess, global_t, summary_writer, summary_op, score_input,score_ph,score_ops, geopath, FLAGS,score_set_ph,score_set_ops):
+    def process(self, sess, global_t, score_set_ph,score_set_ops):
 
         max_timesteps=0 #int(LOCAL_T_MAX * 1.1)
         timesteps_per_actorbatch=256
@@ -229,7 +240,7 @@ class A3CTrainingThread(object):
 
         # Prepare for rollouts
         # ----------------------------------------
-        seg_gen = self.traj_segment_generator(pi, timesteps_per_actorbatch, stochastic=True)
+        seg_gen = self.traj_segment_generator(pi, timesteps_per_actorbatch, stochastic=True, sess=sess)
 
         episodes_so_far = 0
         timesteps_so_far = 0
@@ -319,7 +330,7 @@ class A3CTrainingThread(object):
 
         diff_local_t = self.local_t - start_local_t
         print("finish process")
-        sess.run(score_ops, {score_ph: totalreward})
+
         sess.run(score_set_ops, {score_set_ph: totalreward})
         return diff_local_t;
 
@@ -328,7 +339,7 @@ class A3CTrainingThread(object):
         self.pi.set_fixed_path(fp)
         self.oldpi.set_fixed_path(fp)
 
-    def traj_segment_generator(self, pi, horizon, stochastic):
+    def traj_segment_generator(self, pi, horizon, stochastic, sess):
         t = 0
         ac = self.game_state.get_ac_space().sample()  # not used, just so we have the datatype
         new = True  # marks if we're on first timestep of an episode
@@ -377,6 +388,7 @@ class A3CTrainingThread(object):
             if new:
                 ep_rets.append(cur_ep_ret)
                 ep_lens.append(cur_ep_len)
+                self.set_score(cur_ep_ret,sess)
                 cur_ep_ret = 0
                 cur_ep_len = 0
                 ob = self.game_state.reset()

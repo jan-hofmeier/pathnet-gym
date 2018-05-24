@@ -110,9 +110,6 @@ def train():
         #env = wrapper(gym.make('gym_doom/DoomBasic-v0'))
         #env.close()
 
-        training_thread = A3CTrainingThread(0, "", 0, initial_learning_rate, learning_rate_input, grad_applier,
-                                            MAX_TIME_STEP, device=device, FLAGS=FLAGS, task_index=FLAGS.task_index)
-
         # prepare session
         with tf.device(device):
             # flag for task
@@ -123,10 +120,8 @@ def train():
             global_step = tf.get_variable('global_step',[],initializer=tf.constant_initializer(0),trainable=False);
             global_step_ph=tf.placeholder(global_step.dtype,shape=global_step.get_shape());
             global_step_ops=global_step.assign(global_step_ph);
-            # score for tensorboard and score_set for genetic algorithm
-            score = tf.get_variable('score',[],initializer=tf.constant_initializer(-21),trainable=False);
-            score_ph=tf.placeholder(score.dtype,shape=score.get_shape());
-            score_ops=score.assign(score_ph);
+
+            # score_set for genetic algorithm
             score_set=np.zeros(FLAGS.worker_hosts_num,dtype=object);
             score_set_ph=np.zeros(FLAGS.worker_hosts_num,dtype=object);
             score_set_ops=np.zeros(FLAGS.worker_hosts_num,dtype=object);
@@ -143,6 +138,10 @@ def train():
                     fixed_path_tf[i,j]=tf.get_variable('fixed_path'+str(i)+"-"+str(j),[],initializer=tf.constant_initializer(0),trainable=False);
                     fixed_path_ph[i,j]=tf.placeholder(fixed_path_tf[i,j].dtype,shape=fixed_path_tf[i,j].get_shape());
                     fixed_path_ops[i,j]=fixed_path_tf[i,j].assign(fixed_path_ph[i,j]);
+
+            training_thread = A3CTrainingThread(FLAGS.task_index, "", 0, initial_learning_rate, learning_rate_input, grad_applier,
+                                                MAX_TIME_STEP, device=device, FLAGS=FLAGS, task_index=FLAGS.task_index)
+
             # parameters on PathNet
             vars_=training_thread.pi.get_vars_to_initilize()
             vars_ph=np.zeros(len(vars_),dtype=object);
@@ -153,7 +152,6 @@ def train():
             # initialization
             init_op=tf.global_variables_initializer();
             # summary for tensorboard
-            tf.summary.scalar("score", score);
             summary_op = tf.summary.merge_all()
             saver = tf.train.Saver();
 
@@ -169,7 +167,11 @@ def train():
                                  saver=saver,
                                  init_op=init_op)
 
+
         print("created Superviser")
+
+        if (FLAGS.task_index == FLAGS.worker_hosts_num-1):
+            print("chief")
 
         try:
             os.mkdir("./data/graphs")
@@ -205,8 +207,7 @@ def train():
                     while True:
                         if sess.run([global_step])[0] > (MAX_TIME_STEP*(task+1)):
                             break
-                        diff_global_t = training_thread.process(sess, sess.run([global_step])[0], "",
-                                                                                                    summary_op, "",score_ph,score_ops,"",FLAGS,score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
+                        diff_global_t = training_thread.process(sess, sess.run([global_step])[0], score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
                         sess.run(global_step_ops,{global_step_ph:sess.run([global_step])[0]+diff_global_t});
             else:
                 fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
