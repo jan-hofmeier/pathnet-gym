@@ -88,9 +88,6 @@ class A3CTrainingThread(object):
             self.ob = U.get_placeholder_cached(name="ob")
             #self.ob = checkNumeric(self.ob)
 
-            self.vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
-            self.vf_loss = checkNumeric(self.vf_loss)
-
             self.stage_dependend = []
 
 
@@ -125,10 +122,13 @@ class A3CTrainingThread(object):
                 pol_surr = - tf.reduce_mean(tf.minimum(surr1, surr2))  # PPO's pessimistic surrogate (L^CLIP)
                 pol_surr = checkNumeric(pol_surr)
 
-                total_loss = pol_surr + pol_entpen + self.vf_loss
+                vf_loss = tf.reduce_mean(tf.square(self.pi.vpred - self.ret))
+                vf_loss = checkNumeric(vf_loss)
+
+                total_loss = pol_surr + pol_entpen + vf_loss
                 total_loss = checkNumeric(total_loss)
 
-                losses = [pol_surr, pol_entpen, self.vf_loss, meankl, meanent]
+                losses = [pol_surr, pol_entpen, vf_loss, meankl, meanent]
 
                 #tf.summary.scalar('total_loss', total_loss)
 
