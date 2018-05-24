@@ -143,9 +143,9 @@ class A3CTrainingThread(object):
 
                 compute_losses = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses)
 
-                activeMinimizer = lambda : [ op for i, op in zip(self.pi.get_geopath_vars_idx(tf.get_default_session()), minimize_ops) if i]
+                activeMinimizer = lambda sess: [ op for i, op in zip(self.pi.get_geopath_vars_idx(sess), minimize_ops) if i]
 
-                lossandminimize = U.function([self.ob, ac, self.atarg, self.ret, self.lrmult], losses + activeMinimizer())
+                lossandminimize = lambda ob, acs ,atarg, ret,lrmult, sess: sess.run(losses + activeMinimizer(sess), {self.ob:ob, ac:acs, self.atarg:atarg, self.ret:ret, self.lrmult:lrmult})
 
                 assign_old_eq_new = U.function([], [], updates=[tf.assign(oldv, newv)
                                                                 for (oldv, newv) in
@@ -294,7 +294,7 @@ class A3CTrainingThread(object):
             for _ in range(optim_epochs):
                 losses = []  # list of tuples, each of which gives the loss for a minibatch
                 for batch in d.iterate_once(optim_batchsize):
-                    newlosses = self.lossandminimize(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
+                    newlosses = self.lossandminimize(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult, sess)
                     del newlosses[len(loss_names):]
                     #self.adam.update(g, optim_stepsize * cur_lrmult)
                     losses.append(newlosses)
