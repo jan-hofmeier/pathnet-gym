@@ -71,7 +71,7 @@ class A3CTrainingThread(object):
             # Setup losses and stuff
             # ----------------------------------------
 
-            checkNumeric = lambda x: tf.check_numerics(x,'WARUM???')
+            checkNumeric = lambda x: x#tf.check_numerics(x,'WARUM???')
 
             self.atarg = tf.placeholder(dtype=tf.float32, shape=[None])  # Target advantage function (if applicable)
             #self.atarg = checkNumeric(self.atarg)
