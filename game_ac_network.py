@@ -173,9 +173,9 @@ class GameACPathNetNetwork(GameACNetwork):
     printLogits = 0
     def act(self, stochastic, ob):
         ac1, vpred1, logits =  self._act(stochastic, ob[None])
-        if self.printLogits%10 == 0:
-            print("logits: " + str(logits))
-        self.printLogits+=1
+        #if self.printLogits%10 == 0:
+        #    print("logits: " + str(logits))
+        #self.printLogits+=1
         return ac1[0], vpred1[0]
 
     def get_geopath(self,sess):
