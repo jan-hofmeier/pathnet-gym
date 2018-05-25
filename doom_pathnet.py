@@ -184,7 +184,7 @@ def train():
         # config.gpu_options.per_process_gpu_memory_fraction = 0.1
 
         with sv.managed_session(server.target) as sess, sess.as_default():
-            lastTask = min(sess.run([flag])[0])
+            lastTask = min(sess.run([flag])[0],0)
             recover = lastTask > 0
             lastTask =max(lastTask-1,0)
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):

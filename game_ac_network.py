@@ -186,7 +186,7 @@ class GameACPathNetNetwork(GameACNetwork):
         return res;
 
     def get_geopath(self, sess):
-        return self.get_geopath(sess, self.task_index)
+        return self.get_geopath_for_task(sess, self.task_index)
 
     def get_geopath_set(self, sess):
         set = np.zeros(len(self.geopath_set), dtype=object)
