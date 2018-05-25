@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ps_num=2
+ps_num=1
 worker_num=4
 B=2
 
@@ -14,7 +14,7 @@ done
 
 for i in `eval echo {0..$worker_num}`
 do
-  python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B > >(tee -a data/worker"$i".out) 2> >(tee -a data/worker"$i".err >&2) &
+  unbuffer python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B > >(tee -a data/worker"$i".out) 2> >(tee -a data/worker"$i".err >&2) &
 done
 
 else
@@ -25,7 +25,7 @@ done
 
 for i in `eval echo {0..$worker_num}`
 do
-  python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B --log_dir="$1" > >(tee -a data/worker"$i".out) 2> >(tee -a data/worker"$i".err >&2) &
+  unbuffer python doom_pathnet.py --ps_hosts_num=$ps_num --worker_hosts_num=$worker_num --job_name=worker --task_index=$i --B=$B --log_dir="$1" > >(tee -a data/worker"$i".out) 2> >(tee -a data/worker"$i".err >&2) &
 done
 fi
 
