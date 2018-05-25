@@ -184,9 +184,9 @@ def train():
         # config.gpu_options.per_process_gpu_memory_fraction = 0.1
 
         with sv.managed_session(server.target) as sess, sess.as_default():
-            lastTask = min(sess.run([flag])[0],0)
+            lastTask = int(sess.run([flag])[0])
             recover = lastTask > 0
-            lastTask =max(lastTask-1,0)
+            lastTask = max(lastTask-1,0)
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):
 
                  for task in range(lastTask,2):
@@ -219,6 +219,7 @@ def train():
                 for task in range(lastTask,2):
                     # Generating randomly geopath
                     if not recover:
+                        print("generate new geopath")
                         geopath_set=np.zeros(FLAGS.worker_hosts_num-1,dtype=object);
                         for i in range(FLAGS.worker_hosts_num-1):
                             geopath_set[i]=pathnet.get_geopath(FLAGS.L,FLAGS.M,FLAGS.N);
