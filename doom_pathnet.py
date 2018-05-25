@@ -143,12 +143,10 @@ def train():
                                                 MAX_TIME_STEP, device=device, FLAGS=FLAGS)
 
             # parameters on PathNet
-            vars_=training_thread.pi.get_pathnet_vars()
-            vars_ph=np.zeros(len(vars_),dtype=object);
-            vars_ops=np.zeros(len(vars_),dtype=object);
-            for i in range(len(vars_)):
-                vars_ph[i]=tf.placeholder(vars_[i].dtype,shape=vars_[i].get_shape());
-                vars_ops[i]=vars_[i].assign(vars_ph[i]);
+            vars=training_thread.pi.get_pathnet_vars()
+            vars_init=np.zeros(len(vars),dtype=object)
+            for i in range(len(vars)):
+                vars_init[i] = tf.variables_initializer([vars[i]])
             # initialization
             init_op=tf.global_variables_initializer();
             # summary for tensorboard
@@ -186,19 +184,19 @@ def train():
         # config.gpu_options.per_process_gpu_memory_fraction = 0.1
 
         with sv.managed_session(server.target) as sess, sess.as_default():
+            lastTask = min(sess.run([flag])[0])
+            recover = lastTask > 0
+            lastTask =max(lastTask-1,0)
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):
-                 for task in range(2):
+
+                 for task in range(lastTask,2):
                     training_thread.set_training_stage(task)
 
-                    while sess.run([flag])[0] != (task+1):
+                    while sess.run([flag])[0] < (task+1):
                         time.sleep(2)
 
                     # Set fixed_path
-                    fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
-                    for i in range(FLAGS.L):
-                        for j in range(FLAGS.M):
-                            if(sess.run([fixed_path_tf[i,j]])[0]==1):
-                                fixed_path[i,j]=1.0;
+                    fixed_path=load_tf_fixed_path(sess, fixed_path_tf)
                     training_thread.set_fixed_path(fixed_path);
                     # set start_time
                     wall_t=0.0;
@@ -210,25 +208,30 @@ def train():
                         diff_global_t = training_thread.process(sess, sess.run([global_step])[0], score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
                         sess.run(global_step_ops,{global_step_ph:sess.run([global_step])[0]+diff_global_t});
             else:
-                fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
-                vars_backup=np.zeros(len(vars_),dtype=object)
-                vars_backup=sess.run(vars_)
+                fixed_path=load_tf_fixed_path(sess, fixed_path_tf); #fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
+                #vars_backup=np.zeros(len(vars_),dtype=object)
+                #vars_backup=sess.run(vars_)
                 winner_idx=0
 
                 vis = visualize.GraphVisualize([FLAGS.M] * FLAGS.L, True)
 
 
-                for task in range(2):
+                for task in range(lastTask,2):
                     # Generating randomly geopath
-                    geopath_set=np.zeros(FLAGS.worker_hosts_num-1,dtype=object);
-                    for i in range(FLAGS.worker_hosts_num-1):
-                        geopath_set[i]=pathnet.get_geopath(FLAGS.L,FLAGS.M,FLAGS.N);
-                        tmp=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
-                        for j in range(FLAGS.L):
-                            for k in range(FLAGS.M):
-                                if((geopath_set[i][j,k]==1.0)or(fixed_path[j,k]==1.0)):
-                                    tmp[j,k]=1.0;
-                        pathnet.geopath_insert(sess,training_thread.pi.geopath_update_placeholders_set[i],training_thread.pi.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
+                    if not recover:
+                        geopath_set=np.zeros(FLAGS.worker_hosts_num-1,dtype=object);
+                        for i in range(FLAGS.worker_hosts_num-1):
+                            geopath_set[i]=pathnet.get_geopath(FLAGS.L,FLAGS.M,FLAGS.N);
+                            tmp=np.zeros((FLAGS.L,FLAGS.M),dtype=float);
+                            for j in range(FLAGS.L):
+                                for k in range(FLAGS.M):
+                                    if((geopath_set[i][j,k]==1.0)or(fixed_path[j,k]==1.0)):
+                                        tmp[j,k]=1.0;
+                            pathnet.geopath_insert(sess,training_thread.pi.geopath_update_placeholders_set[i],training_thread.pi.geopath_update_ops_set[i],tmp,FLAGS.L,FLAGS.M);
+                    else:
+                        geopath_set=training_thread.pi.get_geopath_set(sess)
+                        print("recovered geopaths")
+                        recover = False
                     print("Geopath Setting Done");
                     sess.run(flag_ops,{flag_ph:(task+1)});
                     print("=============Task "+str(task+1)+"============");
@@ -300,10 +303,18 @@ def train():
                     vars_idx=training_thread.pi.get_vars_idx();
                     for i in range(len(vars_idx)):
                         if(vars_idx[i]==1.0):
-                            sess.run(vars_ops[i],{vars_ph[i]:vars_backup[i]});
+                            sess.run(vars_init[i]);
 
                 vis.waitForButtonPress()
         sv.stop();
+
+def load_tf_fixed_path(sess, fixed_path_tf):
+    fixed_path = np.zeros((FLAGS.L, FLAGS.M), dtype=float);
+    for i in range(FLAGS.L):
+        for j in range(FLAGS.M):
+            if (sess.run([fixed_path_tf[i, j]])[0] == 1):
+                fixed_path[i, j] = 1.0;
+    return fixed_path
 
 
 def main(_):

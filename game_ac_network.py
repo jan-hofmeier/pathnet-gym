@@ -61,13 +61,13 @@ class GameACNetwork(object):
 class GameACPathNetNetwork(GameACNetwork):
     def __init__(self,
                  name,
-                 thread_index, # -1 for global
+                 task_index, # -1 for global
                  device="/cpu:0",
                  FLAGS="", geopath_set = None):
         GameACNetwork.__init__(self,
                                device)
         self.geopath_set = geopath_set
-        self.task_index=FLAGS.task_index #thread_index
+        self.task_index=task_index #FLAGS.task_index #thread_index
         #scope_name = name +"net_" + str(self._thread_index)
         with tf.device(self._device), tf.variable_scope(name+"GameACPathNetNetwork") as self.scope:
             # First three Layers
@@ -178,12 +178,22 @@ class GameACPathNetNetwork(GameACNetwork):
         #self.printLogits+=1
         return ac1[0], vpred1[0]
 
-    def get_geopath(self,sess):
+    def get_geopath_for_task(self,sess, task_index):
         res=np.zeros((len(self.geopath_set[0]),len(self.geopath_set[0][0])),dtype=float);
         for i in range(len(res)):
             for j in range(len(res[0])):
-                res[i,j]=self.geopath_set[self.task_index][i,j].eval(sess);
+                res[i,j]=self.geopath_set[task_index][i,j].eval(sess);
         return res;
+
+    def get_geopath(self, sess):
+        return self.get_geopath(sess, self.task_index)
+
+    def get_geopath_set(self, sess):
+        set = np.zeros(len(self.geopath_set), dtype=object)
+        for i, _ in enumerate(self.geopath_set):
+            set[i] = self.get_geopath_for_task(sess, i)
+        return set
+
 
     def set_fixed_path(self,fixed_path):
         self.fixed_path=fixed_path;
