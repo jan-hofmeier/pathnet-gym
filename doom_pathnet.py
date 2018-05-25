@@ -284,7 +284,7 @@ def train():
                     fixed_path=geopath_set[winner_idx]
 
                     vis.set_fixed(decodePath(fixed_path), 'r' if task == 0 else 'g')
-                    vis.show(vispaths, 'm')
+                    showPath(vis, geopath_set)
                     print('fix')
                     for i in range(FLAGS.L):
                         for j in range(FLAGS.M):
