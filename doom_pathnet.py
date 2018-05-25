@@ -307,7 +307,6 @@ def train():
 
 
 def main(_):
-    FLAGS.log_dir+=str(int(time.time()));
     FLAGS.ps_hosts_num+=1;
     FLAGS.worker_hosts_num+=1;
     train()
@@ -357,7 +356,7 @@ if __name__ == '__main__':
     parser.add_argument('--restore_dir', type=str, default=False,
                                             help='Restores Weights')
 
-    parser.add_argument('--log_dir', type=str, default='./data/tensorboard/',
+    parser.add_argument('--log_dir', type=str, default='./data/tensorboard/' + str(int(time.time())),
                                             help='Summaries log directry')
     parser.add_argument('--monitor_dir', type=str, default='/tmp/pathnet/atari/experiment-2',
                                             help='Gym Monitor log directry')
