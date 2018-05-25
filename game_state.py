@@ -53,8 +53,8 @@ class GameState(object):
         observation, reward, terminal, info = self.env.step(action)
         self.env.render()
         lifes = info['ale.lives']
-        if self.oldlifes>lifes:
-            #reward -= 10
+        if lifes and self.oldlifes>lifes:
+            reward -= 100
             print("Killed")
         self.oldlifes = lifes
         x_t = self.preprocess_ob(observation)
