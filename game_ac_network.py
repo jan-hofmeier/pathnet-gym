@@ -249,3 +249,4 @@ class GameACPathNetNetwork(GameACNetwork):
                 res+=[1,1];
             else:
                 res+=[0,0];
+        return res

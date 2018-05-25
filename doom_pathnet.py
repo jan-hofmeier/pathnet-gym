@@ -301,6 +301,7 @@ def train():
 
                     # initialization of parameters except fixed_path
                     vars_idx=training_thread.pi.get_vars_idx();
+
                     for i in range(len(vars_idx)):
                         if(vars_idx[i]==1.0):
                             sess.run(vars_init[i]);
