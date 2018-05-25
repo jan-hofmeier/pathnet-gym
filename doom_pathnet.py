@@ -241,6 +241,7 @@ def train():
                     rand_idx=np.arange(FLAGS.worker_hosts_num-1);
                     np.random.shuffle(rand_idx);
                     rand_idx=rand_idx[:FLAGS.B];
+                    showPath(vis,geopath_set)
                     while sess.run([global_step])[0] <= (MAX_TIME_STEP*(task+1)):
                         # if (sess.run([global_step])[0]) % 1000 == 0:
                         #     print("Saving summary...")
@@ -251,9 +252,6 @@ def train():
                         #
                         #     # Determine the next time for running the summary.
 
-
-                        decodePath = lambda p: [np.where(l==1.0)[0] for l in p]
-
                         flag_sum=0;
                         for i in range(FLAGS.worker_hosts_num-1):
                             score_set_print[i]=sess.run([score_set[i]])[0];
@@ -263,9 +261,6 @@ def train():
                                 flag_sum=1;
                                 break;
                         if(flag_sum==0):
-                            vispaths = [np.array(decodePath(p)) for p in geopath_set]
-                            vis.show(vispaths, 'm')
-
                             winner_idx=rand_idx[np.argmax(score_subset)];
                             print(str(sess.run([global_step])[0])+" Step Score: "+str(sess.run([score_set[winner_idx]])[0]));
                             for i in rand_idx:
@@ -282,6 +277,7 @@ def train():
                             rand_idx=np.arange(FLAGS.worker_hosts_num-1)
                             np.random.shuffle(rand_idx)
                             rand_idx=rand_idx[:FLAGS.B]
+                            showPath(vis,geopath_set)
                         else:
                             time.sleep(2);
                     # fixed_path setting
@@ -309,6 +305,14 @@ def train():
 
                 vis.waitForButtonPress()
         sv.stop();
+
+
+def decodePath(p):
+    return [np.where(l == 1.0)[0] for l in p]
+
+def showPath(vis,geopath_set):
+    vispaths = [np.array(decodePath(p)) for p in geopath_set]
+    vis.show(vispaths, 'm')
 
 def load_tf_fixed_path(sess, fixed_path_tf):
     fixed_path = np.zeros((FLAGS.L, FLAGS.M), dtype=float);
