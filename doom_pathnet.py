@@ -188,6 +188,8 @@ def train():
             recover = lastTask > 0
             lastTask = max(lastTask-1,0)
             if(FLAGS.task_index!=(FLAGS.worker_hosts_num-1)):
+                 if recover: #give the other process time to restore geopaths
+                     time.sleep(20)
 
                  for task in range(lastTask,2):
                     training_thread.set_training_stage(task)
