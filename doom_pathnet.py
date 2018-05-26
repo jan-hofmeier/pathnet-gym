@@ -299,7 +299,7 @@ def train():
                     # FIXED_VARS_IDX_BACKUP = training_thread.local_network.get_fixed_vars_idx();
 
                     # initialization of parameters except fixed_path
-                    vars_idx=training_thread.pi.get_vars_idx();
+                    vars_idx=training_thread.pi.get_unfixed_pathnet_vars_idx()
 
                     for i in range(len(vars_idx)):
                         if(vars_idx[i]==1.0):
