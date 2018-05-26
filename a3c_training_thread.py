@@ -207,7 +207,7 @@ class A3CTrainingThread(object):
     def set_start_time(self, start_time):
         self.start_time = start_time
 
-    def process(self, sess, global_t, score_set_ph,score_set_ops):
+    def process(self, sess, global_t_update):
 
         max_timesteps=0 #int(LOCAL_T_MAX * 1.1)
         timesteps_per_actorbatch=256
@@ -326,14 +326,13 @@ class A3CTrainingThread(object):
             iters_so_far += 1
             episodes_so_far += sum(seg["new"])
             timesteps_so_far += len(seg["new"])
-
+            global_t_update(len(seg["new"]))
             print("Episodes so far {} for worker {}".format(episodes_so_far,self.task_index ))
+            print("Timesteps/sec: " + str(timesteps_so_far / (time.time() - tstart)))
 
-        diff_local_t = self.local_t - start_local_t
         print("finish process")
 
-        sess.run(score_set_ops, {score_set_ph: totalreward})
-        return diff_local_t;
+        return totalreward
 
 
     def set_fixed_path(self, fp):

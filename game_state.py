@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 
 from constants import GYM_MONITOR_DIR
-from constants import ACTION_SPACE_TYPE
+from constants import SCREEN_SIZE
 
 import gym
 import gym.utils
@@ -40,10 +40,10 @@ class GameState(object):
         #reshaped_screen = np.reshape(self._screen, (observation.shape[0], observation.shape[1]))
 
         #resized_screen = cv2.resize(reshaped_screen, (120, 160))
-        resized_screen = cv2.resize(observation, (120, 160))
+        resized_screen = cv2.resize(observation, tuple(SCREEN_SIZE))
         x_t = resized_screen  # [:,10:]
-        x_t = np.reshape(x_t, (160, 120, 3))
-        # cv2.imwrite("data/image/x_t" + str(time.time()) + ".png", x_t)
+        x_t = np.reshape(x_t, (SCREEN_SIZE[0], SCREEN_SIZE[1], 3))
+        cv2.imwrite("data/image/x_t" + str(time.time()) + ".png", x_t)
         x_t = x_t.astype(np.float32)
         x_t *= (1.0/255.0)
         return x_t

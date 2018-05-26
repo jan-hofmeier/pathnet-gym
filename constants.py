@@ -12,6 +12,7 @@ PARALLEL_SIZE = 8 # parallel thread size
 #ROMZ = ["Alien-v0", "Centipede-v0"]
 #ACTION_SIZEZ= [18, 18]
 ROMZ = ["MsPacman-v0","Alien-v0"]
+SCREEN_SIZE = [90,120]
 ACTION_SIZEZ= [9,18]
 ACTION_SPACE_TYPE = 'full'
 #ROMZ = ["gym_doom/DoomBasic-v0", "gym_doom/DoomDeathmatch-v0"]

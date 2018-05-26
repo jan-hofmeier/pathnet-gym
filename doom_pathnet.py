@@ -117,7 +117,8 @@ def train():
             # global step
             global_step = tf.get_variable('global_step',[],initializer=tf.constant_initializer(0),trainable=False);
             global_step_ph=tf.placeholder(global_step.dtype,shape=global_step.get_shape());
-            global_step_ops=global_step.assign(global_step_ph);
+            global_step_ops=global_step.assign(global_step + global_step_ph)
+            update_global_step = lambda s: sess.run(global_step_ops, {global_step_ph: s})
 
             # score_set for genetic algorithm
             score_set=np.zeros(FLAGS.worker_hosts_num,dtype=object);
@@ -127,6 +128,7 @@ def train():
                 score_set[i] = tf.get_variable('score'+str(i),[],initializer=tf.constant_initializer(-1000),trainable=False);
                 score_set_ph[i]=tf.placeholder(score_set[i].dtype,shape=score_set[i].get_shape());
                 score_set_ops[i]=score_set[i].assign(score_set_ph[i]);
+            update_score_set= lambda s: sess.run(score_set_ops[FLAGS.task_index], { score_set_ph[FLAGS.task_index]: s})
             # fixed path of earlier task
             fixed_path_tf=np.zeros((FLAGS.L,FLAGS.M),dtype=object);
             fixed_path_ph=np.zeros((FLAGS.L,FLAGS.M),dtype=object);
@@ -207,8 +209,8 @@ def train():
                     while True:
                         if sess.run([global_step])[0] > (MAX_TIME_STEP*(task+1)):
                             break
-                        diff_global_t = training_thread.process(sess, sess.run([global_step])[0], score_set_ph[FLAGS.task_index],score_set_ops[FLAGS.task_index])
-                        sess.run(global_step_ops,{global_step_ph:sess.run([global_step])[0]+diff_global_t});
+                        total_reward =training_thread.process(sess, update_global_step)
+                        update_score_set(total_reward)
             else:
                 fixed_path=load_tf_fixed_path(sess, fixed_path_tf); #fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
                 #vars_backup=np.zeros(len(vars_),dtype=object)

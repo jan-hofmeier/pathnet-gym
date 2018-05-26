@@ -6,6 +6,7 @@ from baselines.common.distributions import make_pdtype
 import baselines.common.tf_util as U
 from constants import ROMZ
 import gym
+from constants import SCREEN_SIZE
 
 #from constants import ACTION_SIZEZ
 
@@ -35,6 +36,7 @@ class GameACNetwork(object):
     # weight initialization based on muupan's code
     # https://github.com/muupan/async-rl/blob/master/a3c_ale.py
     def _fc_variable(self, weight_shape):
+        print("--FC Shape--: " + str(weight_shape))
         input_channels    = weight_shape[0]
         output_channels = weight_shape[1]
         d = 1.0 / np.sqrt(input_channels)
@@ -44,6 +46,7 @@ class GameACNetwork(object):
         return weight, bias
 
     def _conv_variable(self, weight_shape):
+        print("--Conv Shape--: " + str(weight_shape))
         w = weight_shape[0]
         h = weight_shape[1]
         input_channels    = weight_shape[2]
@@ -78,16 +81,12 @@ class GameACPathNetNetwork(GameACNetwork):
             feature_num=[3,8,8,8]
             # last_lin_num=392;
             # last_lin_num=1280
-            last_lin_num = 1408
+            #last_lin_num = 1408
             for i in range(FLAGS.L-1):
                 for j in range(FLAGS.M):
                     self.W_conv[i,j], self.b_conv[i,j] = self._conv_variable([kernel_num[i],kernel_num[i],feature_num[i],feature_num[i+1]]);
 
-            # Last Layer in PathNet
-            self.W_lin=np.zeros(FLAGS.M,dtype=object);
-            self.b_lin=np.zeros(FLAGS.M,dtype=object);
-            for i in range(FLAGS.M):
-                self.W_lin[i], self.b_lin[i] = self._fc_variable([last_lin_num, 256])
+
 
             if self.geopath_set == None:
                 # geopath_examples
@@ -107,7 +106,7 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
             # state (input)
-            self.s = U.get_placeholder("ob", tf.float32, [None, 160, 120, 3])
+            self.s = U.get_placeholder("ob", tf.float32, [None] + SCREEN_SIZE +[3])
 
             net = self.s #tf.check_numerics(self.s, "NaN input")
             layer_modules_list = np.zeros(FLAGS.M, dtype=object)
@@ -118,7 +117,17 @@ class GameACPathNetNetwork(GameACNetwork):
                 net=np.sum(layer_modules_list)
 
             # lin layer
+            last_lin_num = net.get_shape().as_list()
+            print("--------Lin Shape--------: " + str(last_lin_num))
+            last_lin_num = last_lin_num[1] * last_lin_num[2] * last_lin_num[3]
             net = tf.reshape(net, [-1, last_lin_num])
+
+            # Last Layer in PathNet
+            self.W_lin=np.zeros(FLAGS.M,dtype=object);
+            self.b_lin=np.zeros(FLAGS.M,dtype=object);
+            for i in range(FLAGS.M):
+                self.W_lin[i], self.b_lin[i] = self._fc_variable([last_lin_num, 128])
+
             for j in range(FLAGS.M):
                 layer_modules_list[j] = tf.nn.relu(tf.matmul(net, self.W_lin[j]) + self.b_lin[j]) * self.geopath_set[self.task_index][FLAGS.L-1, j]
             net = np.sum(layer_modules_list)
@@ -144,9 +153,9 @@ class GameACPathNetNetwork(GameACNetwork):
                 env = gym.make(rom)
                 pdtype=make_pdtype(env.action_space);
                 self.pdtypes += [pdtype]
-                W_fc2, b_fc2 = self._fc_variable([256, pdtype.param_shape()[0]])
+                W_fc2, b_fc2 = self._fc_variable([net.get_shape().as_list()[1], pdtype.param_shape()[0]])
                 # weight for value output layer
-                W_fc3, b_fc3 = self._fc_variable([256, 1])
+                W_fc3, b_fc3 = self._fc_variable([net.get_shape().as_list()[1], 1])
                 vpred = [tf.reshape(tf.matmul(self.net, W_fc3) + b_fc3, [-1])]
                 self.vpreds += vpred
                 self.pWeights+=[(W_fc2, b_fc2,W_fc3, b_fc3)]
