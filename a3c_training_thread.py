@@ -325,12 +325,7 @@ class A3CTrainingThread(object):
             episodes_so_far += sum(seg["new"])
             steps = len(seg["new"])
             timesteps_so_far += steps
-            for n in seg["new"]:
-                stepsInEpisod+=1
-                if n:
-                    self.set_episodeLen(stepsInEpisod)
-                    stepsInEpisod=0
-            global_t_update(steps)
+            global_t_update(sess,steps)
             print("Episodes so far {} for worker {}".format(episodes_so_far,self.task_index ))
             print("Timesteps/sec: " + str(timesteps_so_far / (time.time() - tstart)))
 
@@ -390,9 +385,10 @@ class A3CTrainingThread(object):
             cur_ep_ret += rew
             cur_ep_len += 1
             if new:
+                self.set_episodeLen(sess,cur_ep_len)
+                self.set_score(sess,cur_ep_ret)
                 ep_rets.append(cur_ep_ret)
                 ep_lens.append(cur_ep_len)
-                self.set_score(cur_ep_ret,sess)
                 cur_ep_ret = 0
                 cur_ep_len = 0
                 ob = self.game_state.reset()
