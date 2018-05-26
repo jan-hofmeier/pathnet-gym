@@ -126,6 +126,7 @@ def train():
             score_set_ops=np.zeros(FLAGS.worker_hosts_num,dtype=object);
             for i in range(FLAGS.worker_hosts_num):
                 score_set[i] = tf.get_variable('score'+str(i),[],initializer=tf.constant_initializer(-1000),trainable=False);
+                tf.summary.scalar("scoreset/" + str(i),score_set[i])
                 score_set_ph[i]=tf.placeholder(score_set[i].dtype,shape=score_set[i].get_shape());
                 score_set_ops[i]=score_set[i].assign(score_set_ph[i]);
             update_score_set= lambda s: sess.run(score_set_ops[FLAGS.task_index], { score_set_ph[FLAGS.task_index]: s})

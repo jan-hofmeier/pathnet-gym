@@ -39,6 +39,7 @@ class A3CTrainingThread(object):
                  device,
                  FLAGS=""
     ):
+        self.FLAGS = FLAGS
         self.task_index = task_index
         clip_param = 0.2
         entcoeff = 0.01
@@ -49,14 +50,9 @@ class A3CTrainingThread(object):
 
         with tf.device(device):
             # score for tensorboard
-            score = tf.get_variable('score', [], initializer=tf.constant_initializer(-21),
-                                    trainable=False)
-            score_ph = tf.placeholder(score.dtype, shape=score.get_shape())
-            score_ops = score.assign(score_ph)
 
-            self.set_score = lambda s,sess: sess.run([score_ops], {score_ph: s})
-            #tf.summary.scalar("score_per_episode" + str(thread_index), scoreep)
-            tf.summary.scalar("score", score)
+            self.set_score = self.createLocalSummaryScalarLogger('score')
+            self.set_episodeLen = self.createLocalSummaryScalarLogger('episodeLen')
 
             print("Initializing worker #{}".format(task_index))
             #self.training_stage = training_stage
@@ -246,6 +242,7 @@ class A3CTrainingThread(object):
                     max_seconds > 0]) == 1, "Only one time constraint permitted"
 
         totalreward = 0
+        stepsInEpisod = 0;
         while True:
             if max_timesteps and timesteps_so_far >= max_timesteps:
                 break
@@ -299,6 +296,7 @@ class A3CTrainingThread(object):
             for batch in d.iterate_once(optim_batchsize):
                 newlosses = self.compute_losses(batch["ob"], batch["ac"], batch["atarg"], batch["vtarg"], cur_lrmult)
                 losses.append(newlosses)
+
             '''
             meanlosses, _, _ = mpi_moments(losses, axis=0)
             logger.log(fmt_row(13, meanlosses))
@@ -307,7 +305,7 @@ class A3CTrainingThread(object):
             logger.record_tabular("ev_tdlam_before", explained_variance(vpredbefore, tdlamret))
             lrlocal = (seg["ep_lens"], seg["ep_rets"])  # local values
             listoflrpairs = MPI.COMM_WORLD.allgather(lrlocal)  # list of tuples
-            lens, rews = map(flatten_lists, zip(*listoflrpairs))
+            
             lenbuffer.extend(lens)
             rewbuffer.extend(rews)
             logger.record_tabular("EpLenMean", np.mean(lenbuffer))
@@ -325,8 +323,14 @@ class A3CTrainingThread(object):
             '''
             iters_so_far += 1
             episodes_so_far += sum(seg["new"])
-            timesteps_so_far += len(seg["new"])
-            global_t_update(len(seg["new"]))
+            steps = len(seg["new"])
+            timesteps_so_far += steps
+            for n in seg["new"]:
+                stepsInEpisod+=1
+                if n:
+                    self.set_episodeLen(stepsInEpisod)
+                    stepsInEpisod=0
+            global_t_update(steps)
             print("Episodes so far {} for worker {}".format(episodes_so_far,self.task_index ))
             print("Timesteps/sec: " + str(timesteps_so_far / (time.time() - tstart)))
 
@@ -395,7 +399,18 @@ class A3CTrainingThread(object):
             t += 1
             self.local_t += 1
 
-
+    def createLocalSummaryScalarLogger(self, name):
+        var = tf.get_variable(name, [], initializer=tf.constant_initializer(0))
+        ph  = tf.placeholder(var.dtype, shape=var.get_shape())
+        for i in range(self.FLAGS.worker_hosts_num):
+            with tf.name_scope("worker"+str(i)):
+                local= tf.get_variable(name, [], initializer=tf.constant_initializer(0))
+                tf.summary.scalar(name,var)
+                if(i == self.task_index):
+                    lvar=local
+        assigng = var.assign(ph)
+        assignl = lvar.assign(ph)
+        return lambda sess, val: sess.run([assigng, assignl], feed_dict={ph: val})
 
 
 def add_vtarg_and_adv(seg, gamma, lam):
