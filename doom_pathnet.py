@@ -118,7 +118,7 @@ def train():
             global_step = tf.get_variable('global_step',[],initializer=tf.constant_initializer(0),trainable=False);
             global_step_ph=tf.placeholder(global_step.dtype,shape=global_step.get_shape());
             global_step_ops=global_step.assign(global_step + global_step_ph)
-            update_global_step = lambda s: sess.run(global_step_ops, {global_step_ph: s})
+            update_global_step = lambda sess, s: sess.run(global_step_ops, {global_step_ph: s})
 
             # score_set for genetic algorithm
             score_set=np.zeros(FLAGS.worker_hosts_num,dtype=object);
@@ -211,7 +211,7 @@ def train():
                         if sess.run([global_step])[0] > (MAX_TIME_STEP*(task+1)):
                             break
                         total_reward =training_thread.process(sess, update_global_step)
-                        update_score_set(total_reward)
+                        update_score_set(sess, total_reward)
             else:
                 fixed_path=load_tf_fixed_path(sess, fixed_path_tf); #fixed_path=np.zeros((FLAGS.L,FLAGS.M),dtype=float)
                 #vars_backup=np.zeros(len(vars_),dtype=object)
