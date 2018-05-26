@@ -78,7 +78,7 @@ class GameACPathNetNetwork(GameACNetwork):
             self.b_conv=np.zeros((FLAGS.L-1,FLAGS.M),dtype=object);
             kernel_num=np.array(FLAGS.kernel_num.split(","),dtype=int);
             stride_size=np.array(FLAGS.stride_size.split(","),dtype=int);
-            feature_num=[3,8,8,8]
+            feature_num=[1,8,8,8]
             # last_lin_num=392;
             # last_lin_num=1280
             #last_lin_num = 1408
@@ -106,7 +106,7 @@ class GameACPathNetNetwork(GameACNetwork):
 
 
             # state (input)
-            self.s = U.get_placeholder("ob", tf.float32, [None] + SCREEN_SIZE +[3])
+            self.s = U.get_placeholder("ob", tf.float32, [None] + SCREEN_SIZE +[1])
 
             net = self.s #tf.check_numerics(self.s, "NaN input")
             layer_modules_list = np.zeros(FLAGS.M, dtype=object)
