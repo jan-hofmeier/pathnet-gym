@@ -54,7 +54,7 @@ class GameState(object):
         observation, reward, terminal, info = self.env.step(action)
         self.env.render()
         lifes = info['ale.lives']
-        if lifes and self.oldlifes>lifes:
+        #if lifes and self.oldlifes>lifes:
             #reward -= 100
             #print("Killed")
         self.oldlifes = lifes
