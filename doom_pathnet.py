@@ -219,7 +219,8 @@ def train():
                 winner_idx=0
 
                 vis = visualize.GraphVisualize([FLAGS.M] * FLAGS.L, True)
-
+                if lastTask > 0:
+                    vis.set_fixed(decodePath(fixed_path), 'r')
 
                 for task in range(lastTask,2):
                     # Generating randomly geopath
