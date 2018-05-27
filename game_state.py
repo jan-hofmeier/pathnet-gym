@@ -16,15 +16,16 @@ import os
 import tensorflow as tf
 #import gym_doom
 #from gym_doom.wrappers import *
-
+from baselines.common.atari_wrappers import make_atari, wrap_deepmind
 
 class GameState(object):
     def __init__(self, rand_seed, ROM, display=True, task_index=-1):
         self.task_index = task_index
         self.ROM = ROM
 #        action_space_wrapper = ToDiscrete(ACTION_SPACE_TYPE)
-        self.env = gym.make(self.ROM)
-        #self.env = wrap_deepmind(self.env)
+        #self.env = gym.make(self.ROM)
+        self.env = make_atari(self.ROM)
+        self.env = wrap_deepmind(self.env)
         # self.env = action_space_wrapper(self.env)
         self.display = display
         if (self.display):
@@ -40,10 +41,10 @@ class GameState(object):
         #reshaped_screen = np.reshape(self._screen, (observation.shape[0], observation.shape[1]))
 
         #resized_screen = cv2.resize(reshaped_screen, (120, 160))
-        resized_screen = cv2.resize(observation, tuple(SCREEN_SIZE))
-        x_t = resized_screen  # [:,10:]
-        x_t = np.reshape(x_t, (SCREEN_SIZE[0], SCREEN_SIZE[1], 3))
-        cv2.imwrite("data/image/x_t" + str(time.time()) + ".png", x_t)
+        #x_t = cv2.resize(observation, tuple(SCREEN_SIZE))
+        x_t = observation
+        #x_t = np.reshape(x_t, (SCREEN_SIZE[0], SCREEN_SIZE[1], 3))
+        #cv2.imwrite("data/image/x_t" + str(time.time()) + ".png", x_t)
         x_t = x_t.astype(np.float32)
         x_t *= (1.0/255.0)
         return x_t
@@ -53,9 +54,9 @@ class GameState(object):
         observation, reward, terminal, info = self.env.step(action)
         self.env.render()
         lifes = info['ale.lives']
-        if lifes and self.oldlifes>lifes:
-            reward -= 100
-            print("Killed")
+        #if lifes and self.oldlifes>lifes:
+            #reward -= 100
+            #print("Killed")
         self.oldlifes = lifes
         x_t = self.preprocess_ob(observation)
         return x_t, reward, terminal, info

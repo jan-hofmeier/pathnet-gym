@@ -1,8 +1,8 @@
 #!/bin/bash
 
-ps_num=1
-worker_num=4
-B=2
+ps_num=2
+worker_num=8
+B=3
 
 
 if [ -z "$1" ]; then

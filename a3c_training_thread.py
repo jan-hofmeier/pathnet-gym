@@ -396,12 +396,13 @@ class A3CTrainingThread(object):
             self.local_t += 1
 
     def createLocalSummaryScalarLogger(self, name):
-        var = tf.get_variable(name, [], initializer=tf.constant_initializer(0))
+        var = tf.get_variable(name, [])
+        tf.summary.scalar(name, var)
         ph  = tf.placeholder(var.dtype, shape=var.get_shape())
         for i in range(self.FLAGS.worker_hosts_num):
             with tf.name_scope("worker{}/".format(i)):
-                local= tf.get_variable(str(i)+name, [], initializer=tf.constant_initializer(0))
-                tf.summary.scalar(name,var)
+                local= tf.get_variable(str(i)+name, [])
+                tf.summary.scalar(name,local)
                 if(i == self.task_index):
                     lvar=local
         assigng = var.assign(ph)
